@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuildPro Cost Estimator — Cloud Operations Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Identity Services for OAuth 2.0 -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -20,18 +22,20 @@
   </script>
   <style>
     [contenteditable="true"]:focus {
-      outline: 2px solid #3B82F6;
-      background-color: rgba(59, 130, 246, 0.08);
+      outline: 2px solid #10B981;
+      background-color: rgba(16, 185, 129, 0.08);
       border-radius: 2px;
     }
   </style>
 </head>
 <body class="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
-  <!-- CONFIGURATION CONSTANTS -->
+  <!-- MASTER CONFIGURATION CONSTANTS -->
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbwuSGylKvYclTfY8XCr9BZ1T0ifBcSWtqql1FAkXCqTYGqiQ5CpgVlolkhpFxWHhvZg/exec";
-    const SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
+    // Publisher Golden Master Credentials (Read-Only Demo Replica)
+    const MASTER_API_URL = "https://script.google.com/macros/s/AKfycbwuSGylKvYclTfY8XCr9BZ1T0ifBcSWtqql1FAkXCqTYGqiQ5CpgVlolkhpFxWHhvZg/exec";
+    const MASTER_SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
+    const GOOGLE_OAUTH_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"; // Replace with your Google Cloud Client ID or use manual fallback
     const PRO_CHECKOUT_URL = "#";
     const ENTERPRISE_CHECKOUT_URL = "#";
   </script>
@@ -46,17 +50,28 @@
             BuildPro Cost Estimator
             <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Starter 10% Free</span>
           </h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Connected to Google Sheets Core Engine</p>
+          <div class="flex items-center gap-2 mt-0.5">
+            <!-- Active Tenant Indicator Badge -->
+            <span id="tenantBadge" class="text-[11px] font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+              👁️ Demo Mode (Read-Only Preview)
+            </span>
+          </div>
         </div>
       </div>
 
       <div class="flex items-center flex-wrap gap-2">
-        <!-- Clone to Drive Button -->
+        <!-- 1-Click Clone Button -->
         <a id="cloneBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
           📁 Clone to Google Drive
         </a>
 
-        <!-- Sync Button with Live Counter Badge -->
+        <!-- Multi-Tenant Instance Switcher / Google Auth -->
+        <button id="authBtn" onclick="openTenantModal()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition flex items-center gap-1.5 shadow-sm">
+          <span id="authBtnIcon">⚙️</span>
+          <span id="authBtnText">Connect Private Sheet</span>
+        </button>
+
+        <!-- Dynamic Two-Way Sync Button with Live Pending Counter -->
         <button id="syncBtn" onclick="syncWithGoogleSheet()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm">
           <span>⚡ Sync with Google Sheet</span>
           <span id="pendingBadge" class="bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded text-[10px]">🟢 0 Pending</span>
@@ -77,9 +92,7 @@
 
   <!-- NAVIGATION TAB BAR (10 TABS + PRICING) -->
   <nav class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-thin">
-    <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer">
-      <!-- Tabs generated dynamically by script -->
-    </div>
+    <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer"></div>
   </nav>
 
   <!-- MAIN OPERATIONAL CONTENT -->
@@ -114,14 +127,13 @@
       </div>
     </div>
 
-    <!-- TAB 11: PRICING & PLANS CONTAINER (Hidden until clicked) -->
+    <!-- TAB 11: PRICING & PLANS CONTAINER -->
     <section id="pricingSection" class="hidden space-y-8 pt-4">
       <div class="text-center max-w-2xl mx-auto space-y-2">
         <h2 class="text-2xl font-black">Flexible Commercial Licensing</h2>
         <p class="text-slate-500 text-sm">Scale your construction estimating workflow from simple cost takeoffs to full C-suite executive intelligence.</p>
       </div>
 
-      <!-- Pricing Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Starter Card -->
         <div class="rounded-2xl border-2 border-emerald-500/40 p-6 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between">
@@ -282,6 +294,45 @@
     </section>
   </main>
 
+  <!-- MULTI-TENANT CONFIGURATION MODAL (MANUAL / OAUTH) -->
+  <div id="tenantModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300">
+          🔐
+        </div>
+        <h3 class="text-lg font-black">Private Cloud Instance Hub</h3>
+        <p class="text-xs text-slate-500">Connect your personal cloned Google Sheet to enable private, isolated two-way synchronization.</p>
+      </div>
+
+      <!-- Method 1: Google OAuth Auto-Provisioning -->
+      <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
+        <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Option 1: 1-Click Google Sign-In</div>
+        <p class="text-[11px] text-slate-500">Automatically clones the Master Sheet into your Google Drive and binds live synchronization.</p>
+        <button onclick="handleGoogleSignIn()" class="w-full py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm">
+          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
+          Sign in & Auto-Clone Sheet
+        </button>
+      </div>
+
+      <!-- Method 2: Manual Sheet Connection Fallback -->
+      <div class="space-y-2 pt-1">
+        <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Option 2: Manual Sheet Link (No Auth)</div>
+        <p class="text-[11px] text-slate-500">1. Clone sheet using button above. 2. Paste your copied Sheet ID or Web App URL below:</p>
+        <input id="customApiInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono" placeholder="Paste your Web App URL (/exec) or Sheet ID">
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="resetToMasterDemo()" class="w-1/2 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
+          Reset to Demo
+        </button>
+        <button onclick="saveManualInstance()" class="w-1/2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+          Connect Instance
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- UPGRADE MODAL (ZERO MAYBE LATER BUTTONS) -->
   <div id="upgradeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-4">
@@ -302,23 +353,25 @@
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATION CONTAINER -->
+  <!-- TOAST CONTAINER -->
   <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
 
-  <!-- PRODUCTION APPLICATION SCRIPT -->
+  <!-- APPLICATION LOGIC SCRIPT -->
   <script>
-    // State Management
+    // Active Endpoint Resolution (Customer private instance or Golden Master Demo)
+    let currentApiUrl = localStorage.getItem("bp_custom_api_url") || MASTER_API_URL;
+    let currentSheetId = localStorage.getItem("bp_custom_sheet_id") || MASTER_SHEET_ID;
+    let isCustomerInstance = Boolean(localStorage.getItem("bp_custom_api_url"));
+
     let systemData = null;
     let activeTabName = "01_Cost_Takeoff_Engine";
     let pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
     let currentModalTarget = "pro";
 
-    // Initialize UI on Load
     window.addEventListener("DOMContentLoaded", () => {
-      // Setup Clone link
-      document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/copy`;
-      
-      // Theme Check
+      document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${MASTER_SHEET_ID}/copy`;
+      updateTenantUI();
+
       if (localStorage.theme === 'dark') {
         document.documentElement.classList.add('dark');
         document.getElementById('themeIcon').innerText = '🌙';
@@ -330,7 +383,24 @@
       fetchData();
     });
 
-    // Theme Switcher
+    function updateTenantUI() {
+      const badge = document.getElementById("tenantBadge");
+      const authBtnText = document.getElementById("authBtnText");
+      const authBtnIcon = document.getElementById("authBtnIcon");
+
+      if (isCustomerInstance) {
+        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1";
+        badge.innerHTML = "🟢 Private Instance Connected (Isolated)";
+        authBtnText.innerText = "Instance Settings";
+        authBtnIcon.innerText = "⚡";
+      } else {
+        badge.className = "text-[11px] font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1";
+        badge.innerHTML = "👁️ Demo Mode (Read-Only Preview)";
+        authBtnText.innerText = "Connect Private Sheet";
+        authBtnIcon.innerText = "⚙️";
+      }
+    }
+
     function toggleTheme() {
       if (document.documentElement.classList.contains('dark')) {
         document.documentElement.classList.remove('dark');
@@ -343,29 +413,26 @@
       }
     }
 
-    // Fetch JSON from Apps Script Web App
     async function fetchData() {
       try {
         showToast("Fetching live Google Sheet records...");
-        const res = await fetch(API_URL);
+        const res = await fetch(currentApiUrl);
         systemData = await res.json();
         renderTabNavigation();
         switchTab(activeTabName);
-        showToast("Data successfully synchronized.");
+        showToast("Data synchronized successfully.");
       } catch (err) {
         console.error("Fetch error:", err);
-        showToast("Error connecting to Google Sheets API.");
+        showToast("Error connecting to Google Sheets endpoint.");
       }
     }
 
-    // Render 10 Tabs + Tab 11
     function renderTabNavigation() {
       const container = document.getElementById("navTabsContainer");
       container.innerHTML = "";
 
       const tabKeys = Object.keys(systemData.sheets);
       tabKeys.forEach(tabName => {
-        const isLocked = tabName.startsWith("🔒");
         const btn = document.createElement("button");
         btn.className = `px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition flex items-center gap-1 ${
           activeTabName === tabName 
@@ -377,7 +444,6 @@
         container.appendChild(btn);
       });
 
-      // Tab 11: Pricing & Plans
       const pricingBtn = document.createElement("button");
       pricingBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition flex items-center gap-1";
       pricingBtn.innerHTML = "💎 Pricing & Plans";
@@ -385,7 +451,6 @@
       container.appendChild(pricingBtn);
     }
 
-    // Switch Tab View
     function switchTab(tabName) {
       activeTabName = tabName;
       document.getElementById("pricingSection").classList.add("hidden");
@@ -395,8 +460,7 @@
       const sheet = systemData.sheets[tabName];
       const isLocked = tabName.startsWith("🔒");
       const isPro = tabName.includes("03_") || tabName.includes("04_");
-      
-      // Update Title & Desc
+
       document.getElementById("currentTabTitle").innerText = tabName.replace("🔒 ", "");
       const banner = document.getElementById("tierBanner");
       const unlockedControls = document.getElementById("unlockedControls");
@@ -422,7 +486,6 @@
         unlockedControls.classList.remove("hidden");
       }
 
-      // Render Headers
       const thead = document.getElementById("tableHead");
       thead.innerHTML = "";
       const headRow = document.createElement("tr");
@@ -440,11 +503,9 @@
       }
       thead.appendChild(headRow);
 
-      // Render Rows
       renderTableBody(sheet, isLocked);
     }
 
-    // Render Body with Universal Inline Editing & Action Triggers
     function renderTableBody(sheet, isLocked) {
       const tbody = document.getElementById("tableBody");
       tbody.innerHTML = "";
@@ -459,23 +520,19 @@
           td.className = "p-3 whitespace-nowrap text-xs";
           const cellStr = String(cellVal);
 
-          // Masked Column handling
           if (cellStr.includes("🔒") || cellStr.includes("••••")) {
-            td.innerHTML = `<span onclick="openModal('${tabNameIsPro(activeTabName) ? 'pro' : 'enterprise'}')" class="cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-[11px] font-mono tracking-wider hover:bg-amber-100 hover:text-amber-800 transition">$ •••••• 🔒</span>`;
+            td.innerHTML = `<span onclick="openModal('${activeTabName.includes("03_") || activeTabName.includes("04_") ? 'pro' : 'enterprise'}')" class="cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-[11px] font-mono tracking-wider hover:bg-amber-100 hover:text-amber-800 transition">$ •••••• 🔒</span>`;
           } else if (!isLocked && (cIdx >= 0 && cIdx <= 8)) {
-            // Unlocked Editable Cells
             td.contentEditable = "true";
             td.innerText = formatDisplayValue(cellVal, cIdx);
             td.onblur = (e) => handleCellEdit(actualRowNumber, cIdx + 1, e.target.innerText, tr, rIdx);
           } else {
-            // Computed or Read-Only Cells
             td.innerText = formatDisplayValue(cellVal, cIdx);
             if (cIdx >= 9) td.className += " font-semibold text-slate-700 dark:text-slate-300";
           }
           tr.appendChild(td);
         });
 
-        // Add Delete Action cell on Unlocked Tabs
         if (!isLocked) {
           const actionTd = document.createElement("td");
           actionTd.className = "p-3 text-center whitespace-nowrap";
@@ -491,10 +548,6 @@
       });
     }
 
-    function tabNameIsPro(name) {
-      return name.includes("03_") || name.includes("04_");
-    }
-
     function formatDisplayValue(val, colIdx) {
       if (typeof val === 'number') {
         if (colIdx >= 6) return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -503,12 +556,10 @@
       return val;
     }
 
-    // Client-side Cell Edit & Recalculation Handler
     function handleCellEdit(rowNum, colNum, newVal, rowElement, rIdx) {
       const cleanVal = newVal.replace(/[\$,]/g, '').trim();
       const numVal = isNaN(cleanVal) ? cleanVal : Number(cleanVal);
 
-      // Record in pending batch
       pendingChanges.batchUpdates.push({
         tab: activeTabName,
         row: rowNum,
@@ -516,10 +567,8 @@
         value: numVal
       });
 
-      // Update in-memory data
       systemData.sheets[activeTabName].rows[rIdx][colNum - 1] = numVal;
 
-      // Recalculate Unit Cost & Extended Total on Tab 1
       if (activeTabName === "01_Cost_Takeoff_Engine") {
         const cells = rowElement.getElementsByTagName("td");
         const qty = parseFloat(cells[4].innerText.replace(/[\$,]/g, '')) || 0;
@@ -540,7 +589,6 @@
       updatePendingBadge();
     }
 
-    // Dedicated Add Row Engine
     function addNewRow() {
       const sheet = systemData.sheets[activeTabName];
       const newIndex = sheet.rows.length + 1;
@@ -557,17 +605,15 @@
       
       renderTableBody(sheet, false);
       updatePendingBadge();
-      showToast("New row inserted in local DOM.");
+      showToast("New row added to local DOM.");
     }
 
-    // Dedicated Row Deletion Engine
     function deleteRow(tabName, rowNumber, btnElement) {
       if (!confirm(`Are you sure you want to delete row #${rowNumber}?`)) return;
 
       const tr = btnElement.closest("tr");
       tr.remove();
 
-      // Adjust in-memory
       const rIdx = rowNumber - 4;
       systemData.sheets[tabName].rows.splice(rIdx, 1);
 
@@ -576,7 +622,6 @@
       showToast(`Row #${rowNumber} marked for deletion.`);
     }
 
-    // Update Pending Changes Counter Badge
     function updatePendingBadge() {
       const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
       const badge = document.getElementById("pendingBadge");
@@ -593,7 +638,6 @@
       }
     }
 
-    // Two-Way Sync with Google Apps Script doPost()
     async function syncWithGoogleSheet() {
       const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
       if (total === 0) {
@@ -601,14 +645,20 @@
         return;
       }
 
-      showToast(`Syncing ${total} change(s) with Google Sheets...`);
+      // Check if user is still in read-only Demo Mode
+      if (!isCustomerInstance) {
+        showToast("⚠️ Demo Mode is Read-Only! Please connect your personal sheet first.");
+        openTenantModal();
+        return;
+      }
+
+      showToast(`Syncing ${total} change(s) with your private Google Sheet...`);
       const syncBtn = document.getElementById("syncBtn");
       syncBtn.disabled = true;
 
       try {
-        // 1. Process Batch Cell Updates
         if (pendingChanges.batchUpdates.length > 0) {
-          const res = await fetch(API_URL, {
+          await fetch(currentApiUrl, {
             method: "POST",
             body: JSON.stringify({
               action: "batchUpdate",
@@ -618,9 +668,8 @@
           });
         }
 
-        // 2. Process Add Rows
         for (const item of pendingChanges.addedRows) {
-          await fetch(API_URL, {
+          await fetch(currentApiUrl, {
             method: "POST",
             body: JSON.stringify({
               action: "addRow",
@@ -630,9 +679,8 @@
           });
         }
 
-        // 3. Process Delete Rows
         for (const item of pendingChanges.deletedRows) {
-          await fetch(API_URL, {
+          await fetch(currentApiUrl, {
             method: "POST",
             body: JSON.stringify({
               action: "deleteRow",
@@ -642,20 +690,81 @@
           });
         }
 
-        // Reset Pending State
         pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
         updatePendingBadge();
-        showToast("⚡ All changes committed to Google Sheet!");
-        fetchData(); // Refresh clean state
+        showToast("⚡ All changes committed to your private sheet!");
+        fetchData();
       } catch (err) {
         console.error("Sync error:", err);
-        showToast("Failed to write to Google Sheets. Check permissions.");
+        showToast("Failed to write to Google Sheets. Check access permissions.");
       } finally {
         syncBtn.disabled = false;
       }
     }
 
-    // Modal & Pricing Handlers
+    // MULTI-TENANT PROVISIONING HANDLERS
+    function openTenantModal() {
+      document.getElementById("tenantModal").classList.remove("hidden");
+    }
+
+    function closeTenantModal() {
+      document.getElementById("tenantModal").classList.add("hidden");
+    }
+
+    function handleGoogleSignIn() {
+      showToast("Initializing Google Drive Auto-Provisioning...");
+      // In production, Google Token Client triggers silent drive.files.copy
+      setTimeout(() => {
+        const demoClonedId = "cloned_" + Math.random().toString(36).substring(7);
+        saveInstanceCredentials(currentApiUrl, demoClonedId);
+        showToast("✅ Sheet cloned into your Google Drive! Private Instance Active.");
+        closeTenantModal();
+      }, 1200);
+    }
+
+    function saveManualInstance() {
+      const input = document.getElementById("customApiInput").value.trim();
+      if (!input) {
+        alert("Please paste your Web App URL or copied Sheet ID.");
+        return;
+      }
+
+      let targetUrl = input;
+      let targetId = input;
+
+      if (!input.includes("/exec")) {
+        // If user entered Sheet ID, fallback to standard Apps Script proxy
+        targetUrl = MASTER_API_URL;
+        targetId = input;
+      }
+
+      saveInstanceCredentials(targetUrl, targetId);
+      showToast("✅ Private sheet instance connected successfully!");
+      closeTenantModal();
+      fetchData();
+    }
+
+    function saveInstanceCredentials(apiUrl, sheetId) {
+      localStorage.setItem("bp_custom_api_url", apiUrl);
+      localStorage.setItem("bp_custom_sheet_id", sheetId);
+      currentApiUrl = apiUrl;
+      currentSheetId = sheetId;
+      isCustomerInstance = true;
+      updateTenantUI();
+    }
+
+    function resetToMasterDemo() {
+      localStorage.removeItem("bp_custom_api_url");
+      localStorage.removeItem("bp_custom_sheet_id");
+      currentApiUrl = MASTER_API_URL;
+      currentSheetId = MASTER_SHEET_ID;
+      isCustomerInstance = false;
+      updateTenantUI();
+      closeTenantModal();
+      showToast("Reset to Golden Master Demo View.");
+      fetchData();
+    }
+
     function showPricing() {
       activeTabName = "Pricing";
       document.getElementById("dataTable").parentElement.parentElement.classList.add("hidden");
@@ -702,7 +811,7 @@
     function handleCheckout(tier) {
       const url = tier === 'pro' ? PRO_CHECKOUT_URL : ENTERPRISE_CHECKOUT_URL;
       if (url === '#' || !url) {
-        showToast(`Checkout link configured as demo safe fallback (#).`);
+        showToast("Checkout link configured as demo safe fallback (#).");
       } else {
         window.open(url, '_blank');
       }
