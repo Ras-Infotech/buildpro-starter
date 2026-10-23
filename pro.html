@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildPro Cost Estimator — Professional Workspace Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#F59E0B', 600: '#D97706', 700: '#B45309' },
+            slateDark: { 800: '#1E293B', 900: '#0F172A' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [contenteditable="true"]:focus {
+      outline: 2px solid #F59E0B;
+      background-color: rgba(245, 158, 11, 0.08);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- CONFIGURATION CONSTANTS -->
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbza3IuVglUp7iAymz7vH5GQcBY8TMZqTxbUUPpcwZwtIhrZinJYkwmvRRyXBf5Jf_G9/exec";
+    const SHEET_ID = "1HedWn_akIsJJSfpHfepwKAliXfh-MroSyO_ojJP17x0";
+    const DEFAULT_STARTER_SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
+    const ENTERPRISE_CHECKOUT_URL = "#";
+  </script>
+
+  <!-- TOP HEADER SUITE -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-amber-500 text-white font-black text-lg p-2 rounded-lg shadow-sm">BP</div>
+        <div>
+          <h1 class="font-bold text-base md:text-lg leading-tight flex items-center gap-2">
+            BuildPro Cost Estimator
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700">Professional $15</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Bid Leveling & Material Procurement Active</p>
+        </div>
+      </div>
+
+      <div class="flex items-center flex-wrap gap-2">
+        <!-- Clone to Drive Button -->
+        <a id="cloneBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+          📁 Clone to Google Drive
+        </a>
+
+        <!-- Migration Hub Button -->
+        <button onclick="openMigrationModal()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition flex items-center gap-1.5 shadow-sm">
+          📥 Auto-Sync Starter Data
+        </button>
+
+        <!-- Sync Button with Live Counter Badge -->
+        <button id="syncBtn" onclick="syncWithGoogleSheet()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition flex items-center gap-1.5 shadow-sm">
+          <span>⚡ Sync with Google Sheet</span>
+          <span id="pendingBadge" class="bg-amber-700 text-amber-100 px-1.5 py-0.5 rounded text-[10px]">🟢 0 Pending</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" class="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Toggle Theme">
+          <span id="themeIcon">☀️</span>
+        </button>
+
+        <!-- Enterprise Upsell Action -->
+        <button onclick="openModal('enterprise')" class="text-xs font-bold px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition shadow-sm">
+          🚀 Unlock Full Suite ($97)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TAB BAR -->
+  <nav class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-thin">
+    <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer"></div>
+  </nav>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
+    <!-- Tier / Lock Notice Banner -->
+    <div id="tierBanner" class="hidden p-3.5 rounded-lg text-xs md:text-sm font-medium flex items-center justify-between border"></div>
+
+    <!-- Tab Operational Controls -->
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <h2 id="currentTabTitle" class="text-lg font-bold">Loading Module...</h2>
+        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">Live operational data mirrored from Google Sheets.</p>
+      </div>
+      <div id="unlockedControls" class="flex items-center gap-2">
+        <button onclick="addNewRow()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition flex items-center gap-1 shadow-sm">
+          ➕ Add Row
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Table Container -->
+    <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-800/60 shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs md:text-sm border-collapse" id="dataTable">
+          <thead id="tableHead" class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200">
+            <tr><th class="p-3">Loading headers...</th></tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <tr><td class="p-6 text-center text-slate-400">Fetching live spreadsheet records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 11: PRICING & PLANS -->
+    <section id="pricingSection" class="hidden space-y-8 pt-4">
+      <div class="text-center max-w-2xl mx-auto space-y-2">
+        <h2 class="text-2xl font-black">Professional Workspace Active</h2>
+        <p class="text-slate-500 text-sm">Scale your construction estimating workflow to full C-suite executive intelligence.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Starter Card -->
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-6 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between">
+          <div>
+            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tier 1</div>
+            <h3 class="text-xl font-bold mt-1">Starter Community</h3>
+            <div class="mt-3 flex items-baseline gap-1">
+              <span class="text-3xl font-black">$0</span>
+              <span class="text-xs text-slate-500">/ Free</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Core cost takeoff & CSI catalog for basic estimations.</p>
+            <hr class="my-4 border-slate-200 dark:border-slate-700">
+            <ul class="text-xs space-y-2 text-slate-500">
+              <li>✓ 01 Cost Takeoff Engine</li>
+              <li>✓ 02 CSI Item Directory</li>
+              <li>✕ Trade Bid Leveling</li>
+              <li>✕ Direct Procurement PO</li>
+            </ul>
+          </div>
+          <button disabled class="mt-6 w-full py-2.5 rounded-lg bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 font-bold text-xs cursor-default">
+            Completed Baseline
+          </button>
+        </div>
+
+        <!-- Pro Card (Current) -->
+        <div class="rounded-2xl border-2 border-amber-500 p-6 bg-amber-50/30 dark:bg-slate-800/60 flex flex-col justify-between relative shadow-md">
+          <div class="absolute -top-3 right-4 bg-amber-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Current Plan
+          </div>
+          <div>
+            <div class="text-xs font-bold text-amber-600 uppercase tracking-wider">Active Workspace</div>
+            <h3 class="text-xl font-bold mt-1">Professional Edition</h3>
+            <div class="mt-3 flex items-baseline gap-1">
+              <span class="text-3xl font-black">$15</span>
+              <span class="text-xs text-slate-500">/ Lifetime</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Trade bid leveling, scope variance calculation, and supplier purchase orders.</p>
+            <hr class="my-4 border-slate-200 dark:border-slate-700">
+            <ul class="text-xs space-y-2 text-slate-700 dark:text-slate-200 font-medium">
+              <li>✓ Tabs 1-4 100% Unlocked (Full CRUD)</li>
+              <li>✓ Subcontractor Risk Scoring</li>
+              <li>✓ Material Rebate & Landed Costs</li>
+              <li>✓ Starter Data Auto-Migration</li>
+            </ul>
+          </div>
+          <button disabled class="mt-6 w-full py-2.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 font-bold text-xs cursor-default">
+            ✓ Currently Active
+          </button>
+        </div>
+
+        <!-- Enterprise Card (Upgrade) -->
+        <div class="rounded-2xl border-2 border-indigo-600 p-6 bg-indigo-50/20 dark:bg-slate-800/60 flex flex-col justify-between relative shadow-md">
+          <div class="absolute -top-3 right-4 bg-indigo-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            Upgrade Target
+          </div>
+          <div>
+            <div class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Executive Suite</div>
+            <h3 class="text-xl font-bold mt-1">Enterprise Operating System</h3>
+            <div class="mt-3 flex items-baseline gap-1">
+              <span class="text-3xl font-black">$97</span>
+              <span class="text-xs text-slate-500">/ Lifetime</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">Full C-suite executive dashboard, S-curve drawdowns, labor burden, retainage escrow, and audit logs.</p>
+            <hr class="my-4 border-slate-200 dark:border-slate-700">
+            <ul class="text-xs space-y-2 text-slate-600 dark:text-slate-300">
+              <li>✓ All 10 Modules 100% Unlocked</li>
+              <li>✓ Executive BI Cockpit & Margin Forecaster</li>
+              <li>✓ Cashflow S-Curve & Capital Drawdown</li>
+              <li>✓ Subcontractor Retainage Escrow Ledger</li>
+              <li>✓ Universal Migration Hub (Starter + Pro)</li>
+            </ul>
+          </div>
+          <button onclick="handleCheckout('enterprise')" class="mt-6 w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-sm">
+            Claim Full Enterprise ($97)
+          </button>
+        </div>
+      </div>
+
+      <!-- Feature Checklist Table -->
+      <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mt-8">
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-bold text-sm">
+          System Feature Matrix Comparison
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th class="p-3">Module Name</th>
+                <th class="p-3">Starter ($0)</th>
+                <th class="p-3">Professional ($15)</th>
+                <th class="p-3">Enterprise ($97)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              <tr>
+                <td class="p-3 font-medium">01 Cost Takeoff Engine</td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">02 CSI MasterFormat Directory</td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">03 Trade Bid Leveling Engine</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">04 Direct Procurement PO Log</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">05 Executive BI Margin Cockpit</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">06 Cashflow S-Curve Forecast</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">07 Labor Burden & Productivity</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">08 Sub Retainage Escrow Ledger</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">09 Audit Critical Escalations</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+              <tr>
+                <td class="p-3 font-medium">10 Global Financial Config</td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-rose-500 font-semibold flex items-center gap-1.5">✕ Inactive</span></td>
+                <td class="p-3"><span class="text-emerald-500 font-semibold flex items-center gap-1.5">✓ Active</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MIGRATION MODAL (STARTER -> PRO) -->
+  <div id="migrationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+          📥
+        </div>
+        <h3 class="text-lg font-black">Import Starter Data</h3>
+        <p class="text-xs text-slate-500">Pull your custom rows and takeoff measurements from your Starter Edition into Professional.</p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Starter Google Sheet ID</label>
+        <input id="starterSheetInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms">
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeMigrationModal()" class="w-1/2 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
+          Cancel
+        </button>
+        <button id="startMigrateBtn" onclick="executeMigration()" class="w-1/2 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+          Sync Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPGRADE MODAL FOR ENTERPRISE -->
+  <div id="upgradeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-4">
+      <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+        🚀
+      </div>
+      <h3 class="text-lg font-black">Enterprise Executive Module</h3>
+      <p class="text-xs text-slate-500 dark:text-slate-400">Executive margin dashboards, multi-year cashflow S-curves, and retainage escrow calculations are unlocked exclusively in the Enterprise Suite.</p>
+
+      <div class="pt-2 flex flex-col gap-2">
+        <button onclick="handleCheckout('enterprise')" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+          Claim Full Enterprise ($97)
+        </button>
+        <button onclick="switchToPricingTab()" class="w-full py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100 transition">
+          View Pricing & Plans
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
+
+  <!-- APP LOGIC SCRIPT -->
+  <script>
+    let systemData = null;
+    let activeTabName = "01_Cost_Takeoff_Engine";
+    let pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/copy`;
+      document.getElementById("starterSheetInput").value = DEFAULT_STARTER_SHEET_ID;
+
+      if (localStorage.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').innerText = '🌙';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      }
+
+      fetchData();
+    });
+
+    function toggleTheme() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.theme = 'light';
+        document.getElementById('themeIcon').innerText = '☀️';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.theme = 'dark';
+        document.getElementById('themeIcon').innerText = '🌙';
+      }
+    }
+
+    async function fetchData() {
+      try {
+        showToast("Fetching live Google Sheet records...");
+        const res = await fetch(API_URL);
+        systemData = await res.json();
+        renderTabNavigation();
+        switchTab(activeTabName);
+        showToast("Connected to Professional Core Engine.");
+      } catch (err) {
+        console.error("Fetch error:", err);
+        showToast("Error connecting to Google Sheets API.");
+      }
+    }
+
+    function renderTabNavigation() {
+      const container = document.getElementById("navTabsContainer");
+      container.innerHTML = "";
+
+      const tabKeys = Object.keys(systemData.sheets);
+      tabKeys.forEach(tabName => {
+        const btn = document.createElement("button");
+        btn.className = `px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition flex items-center gap-1 ${
+          activeTabName === tabName 
+            ? 'bg-amber-500 text-white' 
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+        }`;
+        btn.innerHTML = `${tabName}`;
+        btn.onclick = () => switchTab(tabName);
+        container.appendChild(btn);
+      });
+
+      const pricingBtn = document.createElement("button");
+      pricingBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition flex items-center gap-1";
+      pricingBtn.innerHTML = "💎 Pricing & Plans";
+      pricingBtn.onclick = () => showPricing();
+      container.appendChild(pricingBtn);
+    }
+
+    function switchTab(tabName) {
+      activeTabName = tabName;
+      document.getElementById("pricingSection").classList.add("hidden");
+      document.getElementById("dataTable").parentElement.parentElement.classList.remove("hidden");
+      renderTabNavigation();
+
+      const sheet = systemData.sheets[tabName];
+      const isLocked = tabName.startsWith("🔒");
+
+      document.getElementById("currentTabTitle").innerText = tabName.replace("🔒 ", "");
+      const banner = document.getElementById("tierBanner");
+      const unlockedControls = document.getElementById("unlockedControls");
+
+      if (isLocked) {
+        unlockedControls.classList.add("hidden");
+        banner.classList.remove("hidden");
+        banner.className = "p-3.5 rounded-lg text-xs md:text-sm font-medium flex items-center justify-between border bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950/50 dark:text-indigo-200 dark:border-indigo-800";
+        banner.innerHTML = `
+          <span>🚀 <strong>ENTERPRISE EXECUTIVE MODULE:</strong> Multi-year models & C-suite dashboards locked.</span>
+          <button onclick="openModal('enterprise')" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-xs transition">Unlock Suite ($97)</button>
+        `;
+      } else {
+        banner.classList.add("hidden");
+        unlockedControls.classList.remove("hidden");
+      }
+
+      const thead = document.getElementById("tableHead");
+      thead.innerHTML = "";
+      const headRow = document.createElement("tr");
+      sheet.headers.forEach(h => {
+        const th = document.createElement("th");
+        th.className = "p-3 whitespace-nowrap text-xs";
+        th.innerText = h;
+        headRow.appendChild(th);
+      });
+      if (!isLocked) {
+        const actionTh = document.createElement("th");
+        actionTh.className = "p-3 text-center text-xs";
+        actionTh.innerText = "Action";
+        headRow.appendChild(actionTh);
+      }
+      thead.appendChild(headRow);
+
+      renderTableBody(sheet, isLocked);
+    }
+
+    function renderTableBody(sheet, isLocked) {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      sheet.rows.forEach((row, rIdx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/40 transition";
+        const actualRowNumber = 4 + rIdx;
+
+        row.forEach((cellVal, cIdx) => {
+          const td = document.createElement("td");
+          td.className = "p-3 whitespace-nowrap text-xs";
+          const cellStr = String(cellVal);
+
+          if (cellStr.includes("🔒") || cellStr.includes("••••")) {
+            td.innerHTML = `<span onclick="openModal('enterprise')" class="cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-[11px] font-mono tracking-wider hover:bg-indigo-100 hover:text-indigo-800 transition">$ •••••• 🔒</span>`;
+          } else if (!isLocked && isCellEditable(activeTabName, cIdx)) {
+            td.contentEditable = "true";
+            td.innerText = formatDisplayValue(cellVal, cIdx);
+            td.onblur = (e) => handleCellEdit(actualRowNumber, cIdx + 1, e.target.innerText, tr, rIdx);
+          } else {
+            td.innerText = formatDisplayValue(cellVal, cIdx);
+            if (isCalculatedColumn(activeTabName, cIdx)) {
+              td.className += " font-semibold text-slate-700 dark:text-slate-300";
+            }
+          }
+          tr.appendChild(td);
+        });
+
+        if (!isLocked) {
+          const actionTd = document.createElement("td");
+          actionTd.className = "p-3 text-center whitespace-nowrap";
+          actionTd.innerHTML = `
+            <button onclick="deleteRow('${activeTabName}', ${actualRowNumber}, this)" class="text-slate-400 hover:text-rose-500 p-1.5 transition-colors" title="Delete Row">
+              🗑️
+            </button>
+          `;
+          tr.appendChild(actionTd);
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function isCellEditable(tab, colIdx) {
+      if (tab === "01_Cost_Takeoff_Engine") return colIdx <= 8;
+      if (tab === "02_CSI_Item_Directory") return true;
+      if (tab === "03_Trade_Bid_Leveling") return colIdx <= 3; // Base submitted and scope adjust editable
+      if (tab === "04_Direct_Procurement_PO") return colIdx <= 4; // Order Qty & Unit price editable
+      return false;
+    }
+
+    function isCalculatedColumn(tab, colIdx) {
+      if (tab === "01_Cost_Takeoff_Engine") return colIdx >= 9;
+      if (tab === "03_Trade_Bid_Leveling") return colIdx >= 4;
+      if (tab === "04_Direct_Procurement_PO") return colIdx >= 5;
+      return false;
+    }
+
+    function formatDisplayValue(val, colIdx) {
+      if (typeof val === 'number') {
+        if (colIdx >= 2 && !activeTabName.includes("02_")) {
+          return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return Number(val).toLocaleString();
+      }
+      return val;
+    }
+
+    function handleCellEdit(rowNum, colNum, newVal, rowElement, rIdx) {
+      const cleanVal = newVal.replace(/[\$,]/g, '').trim();
+      const numVal = isNaN(cleanVal) ? cleanVal : Number(cleanVal);
+
+      pendingChanges.batchUpdates.push({
+        tab: activeTabName,
+        row: rowNum,
+        col: colNum,
+        value: numVal
+      });
+
+      systemData.sheets[activeTabName].rows[rIdx][colNum - 1] = numVal;
+
+      // Real-time client-side DOM recalculations
+      const cells = rowElement.getElementsByTagName("td");
+      if (activeTabName === "01_Cost_Takeoff_Engine") {
+        const qty = parseFloat(cells[4].innerText.replace(/[\$,]/g, '')) || 0;
+        const mat = parseFloat(cells[6].innerText.replace(/[\$,]/g, '')) || 0;
+        const lab = parseFloat(cells[7].innerText.replace(/[\$,]/g, '')) || 0;
+        const eq = parseFloat(cells[8].innerText.replace(/[\$,]/g, '')) || 0;
+        const unitCost = mat + lab + eq;
+        const ext = qty * unitCost;
+        cells[9].innerText = '$' + unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cells[10].innerText = '$' + ext.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else if (activeTabName === "03_Trade_Bid_Leveling") {
+        const base = parseFloat(cells[2].innerText.replace(/[\$,]/g, '')) || 0;
+        const adj = parseFloat(cells[3].innerText.replace(/[\$,]/g, '')) || 0;
+        const norm = base + adj;
+        const variance = (norm - 250000) / 250000;
+        cells[4].innerText = '$' + norm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cells[5].innerText = (variance * 100).toFixed(1) + '%';
+        cells[6].innerText = variance > 0.05 ? "HIGH EXPOSURE" : "OPTIMAL";
+      } else if (activeTabName === "04_Direct_Procurement_PO") {
+        const qty = parseFloat(cells[3].innerText.replace(/[\$,]/g, '')) || 0;
+        const price = parseFloat(cells[4].innerText.replace(/[\$,]/g, '')) || 0;
+        const landed = qty * price * 1.05;
+        const rebate = (qty * price) * 0.045;
+        cells[5].innerText = '$' + landed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cells[6].innerText = '$' + rebate.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      updatePendingBadge();
+    }
+
+    function addNewRow() {
+      const sheet = systemData.sheets[activeTabName];
+      const newIndex = sheet.rows.length + 1;
+      let newRowValues = [];
+
+      if (activeTabName === "01_Cost_Takeoff_Engine") {
+        newRowValues = [newIndex, "01-00-00", "New Scope Item", "General", 100, "EA", 10.00, 15.00, 2.00, 27.00, 2700.00];
+      } else if (activeTabName === "02_CSI_Item_Directory") {
+        newRowValues = ["01-00-00", "01 - General", "New Specification", "EA", 10.00, 15.00, 0.05];
+      } else if (activeTabName === "03_Trade_Bid_Leveling") {
+        newRowValues = ["01 General", "New Subcontractor Co", 150000, 5000, 155000, "-38.0%", "OPTIMAL", "Recommended Low"];
+      } else if (activeTabName === "04_Direct_Procurement_PO") {
+        newRowValues = ["PO-1050", "Preferred Vendor", "Commercial Fixtures", 200, 35.00, 7350.00, 315.00];
+      }
+
+      sheet.rows.push(newRowValues);
+      pendingChanges.addedRows.push({ tab: activeTabName, rowData: newRowValues });
+      
+      renderTableBody(sheet, false);
+      updatePendingBadge();
+      showToast("New row added to " + activeTabName);
+    }
+
+    function deleteRow(tabName, rowNumber, btnElement) {
+      if (!confirm(`Are you sure you want to delete row #${rowNumber}?`)) return;
+
+      const tr = btnElement.closest("tr");
+      tr.remove();
+
+      const rIdx = rowNumber - 4;
+      systemData.sheets[tabName].rows.splice(rIdx, 1);
+
+      pendingChanges.deletedRows.push({ tab: tabName, rowIndex: rowNumber });
+      updatePendingBadge();
+      showToast(`Row #${rowNumber} marked for deletion.`);
+    }
+
+    function updatePendingBadge() {
+      const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
+      const badge = document.getElementById("pendingBadge");
+      const btn = document.getElementById("syncBtn");
+
+      if (total > 0) {
+        badge.className = "bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded text-[10px] font-bold";
+        badge.innerText = `🟡 ${total} Pending`;
+        btn.classList.add("ring-2", "ring-amber-400");
+      } else {
+        badge.className = "bg-amber-700 text-amber-100 px-1.5 py-0.5 rounded text-[10px]";
+        badge.innerText = `🟢 0 Pending`;
+        btn.classList.remove("ring-2", "ring-amber-400");
+      }
+    }
+
+    async function syncWithGoogleSheet() {
+      const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
+      if (total === 0) {
+        showToast("Everything is already in sync.");
+        return;
+      }
+
+      showToast(`Syncing ${total} change(s) with Google Sheets...`);
+      const syncBtn = document.getElementById("syncBtn");
+      syncBtn.disabled = true;
+
+      try {
+        if (pendingChanges.batchUpdates.length > 0) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "batchUpdate",
+              tabName: activeTabName,
+              updates: pendingChanges.batchUpdates
+            })
+          });
+        }
+
+        for (const item of pendingChanges.addedRows) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "addRow",
+              tabName: item.tab,
+              rowData: item.rowData
+            })
+          });
+        }
+
+        for (const item of pendingChanges.deletedRows) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "deleteRow",
+              tabName: item.tab,
+              rowIndex: item.rowIndex
+            })
+          });
+        }
+
+        pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
+        updatePendingBadge();
+        showToast("⚡ All changes committed to Google Sheet!");
+        fetchData();
+      } catch (err) {
+        console.error("Sync error:", err);
+        showToast("Failed to write to Google Sheets. Check permissions.");
+      } finally {
+        syncBtn.disabled = false;
+      }
+    }
+
+    // MIGRATION HUB HANDLERS
+    function openMigrationModal() {
+      document.getElementById("migrationModal").classList.remove("hidden");
+    }
+
+    function closeMigrationModal() {
+      document.getElementById("migrationModal").classList.add("hidden");
+    }
+
+    async function executeMigration() {
+      const sourceId = document.getElementById("starterSheetInput").value.trim();
+      if (!sourceId) {
+        alert("Please enter a valid Starter Sheet ID.");
+        return;
+      }
+
+      const btn = document.getElementById("startMigrateBtn");
+      btn.disabled = true;
+      btn.innerText = "Syncing...";
+      showToast("Migrating records from Starter Sheet...");
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "importStarter",
+            sourceSheetId: sourceId
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(`✅ ${result.message} (${result.count} records)`);
+          closeMigrationModal();
+          fetchData();
+        } else {
+          showToast("Migration error: " + result.message);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("Failed to migrate. Make sure Starter Sheet is shared.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Sync Now";
+      }
+    }
+
+    function showPricing() {
+      activeTabName = "Pricing";
+      document.getElementById("dataTable").parentElement.parentElement.classList.add("hidden");
+      document.getElementById("tierBanner").classList.add("hidden");
+      document.getElementById("unlockedControls").classList.add("hidden");
+      document.getElementById("currentTabTitle").innerText = "Commercial Licensing & Plans";
+      document.getElementById("currentTabDesc").innerText = "Review features and unlock advanced estimation tiers.";
+      document.getElementById("pricingSection").classList.remove("hidden");
+      renderTabNavigation();
+    }
+
+    function openModal(tier) {
+      document.getElementById("upgradeModal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("upgradeModal").classList.add("hidden");
+    }
+
+    function switchToPricingTab() {
+      closeModal();
+      showPricing();
+    }
+
+    function handleCheckout(tier) {
+      if (ENTERPRISE_CHECKOUT_URL === '#' || !ENTERPRISE_CHECKOUT_URL) {
+        showToast("Enterprise checkout configured as demo safe fallback (#).");
+      } else {
+        window.open(ENTERPRISE_CHECKOUT_URL, '_blank');
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.classList.remove("opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "pointer-events-none");
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
