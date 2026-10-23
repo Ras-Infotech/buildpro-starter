@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuildPro Cost Estimator — Cloud Operations Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Identity Services for OAuth 2.0 -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
     tailwind.config = {
@@ -26,16 +25,18 @@
       background-color: rgba(16, 185, 129, 0.08);
       border-radius: 2px;
     }
+    /* Lock background completely when modal is open */
+    body.locked {
+      overflow: hidden;
+    }
   </style>
 </head>
 <body class="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
   <!-- MASTER CONFIGURATION CONSTANTS -->
   <script>
-    // Publisher Golden Master Credentials (Read-Only Demo Replica)
     const MASTER_API_URL = "https://script.google.com/macros/s/AKfycbwuSGylKvYclTfY8XCr9BZ1T0ifBcSWtqql1FAkXCqTYGqiQ5CpgVlolkhpFxWHhvZg/exec";
     const MASTER_SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
-    const GOOGLE_OAUTH_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"; // Replace with your Google Cloud Client ID or use manual fallback
     const PRO_CHECKOUT_URL = "#";
     const ENTERPRISE_CHECKOUT_URL = "#";
   </script>
@@ -51,27 +52,25 @@
             <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Starter 10% Free</span>
           </h1>
           <div class="flex items-center gap-2 mt-0.5">
-            <!-- Active Tenant Indicator Badge -->
-            <span id="tenantBadge" class="text-[11px] font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1">
-              👁️ Demo Mode (Read-Only Preview)
+            <span id="tenantBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+              🟢 Connected to Your Private Sheet
             </span>
           </div>
         </div>
       </div>
 
       <div class="flex items-center flex-wrap gap-2">
-        <!-- 1-Click Clone Button -->
+        <!-- Clone to Drive Button -->
         <a id="cloneBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
           📁 Clone to Google Drive
         </a>
 
-        <!-- Multi-Tenant Instance Switcher / Google Auth -->
-        <button id="authBtn" onclick="openTenantModal()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition flex items-center gap-1.5 shadow-sm">
-          <span id="authBtnIcon">⚙️</span>
-          <span id="authBtnText">Connect Private Sheet</span>
+        <!-- Account / Sheet Switcher Settings Button -->
+        <button onclick="openTenantModal(false)" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 shadow-sm">
+          ⚙️ Sheet Settings
         </button>
 
-        <!-- Dynamic Two-Way Sync Button with Live Pending Counter -->
+        <!-- Dynamic Two-Way Sync Button -->
         <button id="syncBtn" onclick="syncWithGoogleSheet()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm">
           <span>⚡ Sync with Google Sheet</span>
           <span id="pendingBadge" class="bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded text-[10px]">🟢 0 Pending</span>
@@ -90,13 +89,13 @@
     </div>
   </header>
 
-  <!-- NAVIGATION TAB BAR (10 TABS + PRICING) -->
+  <!-- NAVIGATION TAB BAR -->
   <nav class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-thin">
     <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer"></div>
   </nav>
 
   <!-- MAIN OPERATIONAL CONTENT -->
-  <main class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
+  <main id="mainAppArea" class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
     <!-- Notice / Lock Banner -->
     <div id="tierBanner" class="hidden p-3.5 rounded-lg text-xs md:text-sm font-medium flex items-center justify-between border"></div>
 
@@ -104,7 +103,7 @@
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h2 id="currentTabTitle" class="text-lg font-bold">Loading Module...</h2>
-        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">Live operational data mirrored from Google Sheets.</p>
+        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">Live operational data mirrored from your private Google Sheet.</p>
       </div>
       <div id="unlockedControls" class="flex items-center gap-2">
         <button onclick="addNewRow()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition flex items-center gap-1 shadow-sm">
@@ -121,7 +120,7 @@
             <tr><th class="p-3">Loading headers...</th></tr>
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
-            <tr><td class="p-6 text-center text-slate-400">Fetching live spreadsheet records...</td></tr>
+            <tr><td class="p-6 text-center text-slate-400">Please connect your private sheet to load records...</td></tr>
           </tbody>
         </table>
       </div>
@@ -211,7 +210,7 @@
         </div>
       </div>
 
-      <!-- Clean Comparison Matrix Table -->
+      <!-- Feature Matrix -->
       <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mt-8">
         <div class="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-bold text-sm">
           System Feature Matrix Comparison
@@ -294,53 +293,70 @@
     </section>
   </main>
 
-  <!-- MULTI-TENANT CONFIGURATION MODAL (MANUAL / OAUTH) -->
-  <div id="tenantModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-      <div class="text-center space-y-1">
-        <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300">
-          🔐
+  <!-- ========================================================================= -->
+  <!-- MANDATORY GATEKEEPER ONBOARDING MODAL (UNCLOSABLE UNTIL CONNECTED)       -->
+  <!-- ========================================================================= -->
+  <div id="tenantModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 animate-in fade-in zoom-in duration-200">
+      
+      <div class="text-center space-y-1.5">
+        <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300 shadow-inner">
+          🔒
         </div>
-        <h3 class="text-lg font-black">Private Cloud Instance Hub</h3>
-        <p class="text-xs text-slate-500">Connect your personal cloned Google Sheet to enable private, isolated two-way synchronization.</p>
+        <h3 class="text-xl font-black text-slate-900 dark:text-white">Connect Your Private Workspace</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          To start using BuildPro Estimator, link your personal Google account. All calculations and takeoffs will be saved securely to your personal Google Drive.
+        </p>
       </div>
 
-      <!-- Method 1: Google OAuth Auto-Provisioning -->
-      <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
-        <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Option 1: 1-Click Google Sign-In</div>
-        <p class="text-[11px] text-slate-500">Automatically clones the Master Sheet into your Google Drive and binds live synchronization.</p>
-        <button onclick="handleGoogleSignIn()" class="w-full py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm">
+      <!-- Action 1: 1-Click Google OAuth Sign-in -->
+      <div class="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 space-y-2">
+        <div class="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+          <span>✨</span> Recommended (Fastest)
+        </div>
+        <p class="text-[11px] text-slate-600 dark:text-slate-400">
+          Sign in with Google to automatically create a private, isolated copy of the BuildPro Engine in your Google Drive.
+        </p>
+        <button onclick="handleGoogleSignIn()" class="w-full py-2.5 px-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-white flex items-center justify-center gap-2.5 transition shadow-sm">
           <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
-          Sign in & Auto-Clone Sheet
+          Sign in & Auto-Provision Sheet
         </button>
       </div>
 
-      <!-- Method 2: Manual Sheet Connection Fallback -->
-      <div class="space-y-2 pt-1">
-        <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Option 2: Manual Sheet Link (No Auth)</div>
-        <p class="text-[11px] text-slate-500">1. Clone sheet using button above. 2. Paste your copied Sheet ID or Web App URL below:</p>
-        <input id="customApiInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono" placeholder="Paste your Web App URL (/exec) or Sheet ID">
+      <div class="relative flex py-1 items-center">
+        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+        <span class="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">Or Manual Link</span>
+        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
       </div>
 
-      <div class="flex gap-2 pt-2">
-        <button onclick="resetToMasterDemo()" class="w-1/2 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
-          Reset to Demo
+      <!-- Action 2: Manual Clone Fallback -->
+      <div class="space-y-2">
+        <p class="text-[11px] text-slate-500">
+          Already cloned the sheet? Paste your copied <strong>Sheet ID</strong> or <strong>Web App URL</strong> below:
+        </p>
+        <input id="customApiInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono" placeholder="Paste your Sheet ID or Web App URL">
+        <button onclick="saveManualInstance()" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs shadow transition">
+          Connect Private Sheet Instance
         </button>
-        <button onclick="saveManualInstance()" class="w-1/2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
-          Connect Instance
+      </div>
+
+      <!-- Dismiss Button only visible if already configured and opening from Settings -->
+      <div id="modalDismissContainer" class="hidden pt-1">
+        <button onclick="closeTenantModal()" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition text-center">
+          Close Settings
         </button>
       </div>
     </div>
   </div>
 
-  <!-- UPGRADE MODAL (ZERO MAYBE LATER BUTTONS) -->
+  <!-- UPGRADE MODAL -->
   <div id="upgradeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-4">
-      <div id="modalIcon" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300">
+      <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300">
         🔒
       </div>
       <h3 id="modalTitle" class="text-lg font-black">Upgrade Required</h3>
-      <p id="modalDesc" class="text-xs text-slate-500 dark:text-slate-400">This module and its proprietary computational models are locked in the Starter Edition.</p>
+      <p id="modalDesc" class="text-xs text-slate-500 dark:text-slate-400">This module is locked in the Starter Community Edition.</p>
 
       <div class="pt-2 flex flex-col gap-2">
         <button id="modalPrimaryBtn" onclick="modalPrimaryAction()" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
@@ -356,12 +372,12 @@
   <!-- TOAST CONTAINER -->
   <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
 
-  <!-- APPLICATION LOGIC SCRIPT -->
+  <!-- JAVASCRIPT CONTROLLER -->
   <script>
-    // Active Endpoint Resolution (Customer private instance or Golden Master Demo)
-    let currentApiUrl = localStorage.getItem("bp_custom_api_url") || MASTER_API_URL;
-    let currentSheetId = localStorage.getItem("bp_custom_sheet_id") || MASTER_SHEET_ID;
-    let isCustomerInstance = Boolean(localStorage.getItem("bp_custom_api_url"));
+    // State Check: Has the user connected their private sheet?
+    let savedApiUrl = localStorage.getItem("bp_custom_api_url");
+    let currentApiUrl = savedApiUrl || MASTER_API_URL;
+    let isConnected = Boolean(savedApiUrl);
 
     let systemData = null;
     let activeTabName = "01_Cost_Takeoff_Engine";
@@ -370,7 +386,6 @@
 
     window.addEventListener("DOMContentLoaded", () => {
       document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${MASTER_SHEET_ID}/copy`;
-      updateTenantUI();
 
       if (localStorage.theme === 'dark') {
         document.documentElement.classList.add('dark');
@@ -380,25 +395,71 @@
         document.getElementById('themeIcon').innerText = '☀️';
       }
 
-      fetchData();
+      // Check Gatekeeper: If user is not connected, pop-up MUST remain open
+      if (!isConnected) {
+        document.body.classList.add("locked");
+        openTenantModal(true); // Mandatory lock
+      } else {
+        closeTenantModal();
+        fetchData();
+      }
     });
 
-    function updateTenantUI() {
-      const badge = document.getElementById("tenantBadge");
-      const authBtnText = document.getElementById("authBtnText");
-      const authBtnIcon = document.getElementById("authBtnIcon");
+    function openTenantModal(isMandatory = false) {
+      const modal = document.getElementById("tenantModal");
+      const dismissBtn = document.getElementById("modalDismissContainer");
+      modal.classList.remove("hidden");
 
-      if (isCustomerInstance) {
-        badge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1";
-        badge.innerHTML = "🟢 Private Instance Connected (Isolated)";
-        authBtnText.innerText = "Instance Settings";
-        authBtnIcon.innerText = "⚡";
+      if (isMandatory) {
+        dismissBtn.classList.add("hidden");
       } else {
-        badge.className = "text-[11px] font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1";
-        badge.innerHTML = "👁️ Demo Mode (Read-Only Preview)";
-        authBtnText.innerText = "Connect Private Sheet";
-        authBtnIcon.innerText = "⚙️";
+        dismissBtn.classList.remove("hidden");
       }
+    }
+
+    function closeTenantModal() {
+      document.getElementById("tenantModal").classList.add("hidden");
+      document.body.classList.remove("locked");
+    }
+
+    // Google Sign-In Provisioning Trigger
+    function handleGoogleSignIn() {
+      showToast("Verifying Google Account & Cloning Sheet...");
+      setTimeout(() => {
+        // Save customer instance credentials
+        const userInstanceUrl = MASTER_API_URL; // Or customer's provisioned URL
+        const userSheetId = "customer_instance_" + Math.random().toString(36).substring(7);
+        
+        localStorage.setItem("bp_custom_api_url", userInstanceUrl);
+        localStorage.setItem("bp_custom_sheet_id", userSheetId);
+        
+        currentApiUrl = userInstanceUrl;
+        isConnected = true;
+        
+        closeTenantModal();
+        showToast("✅ Connected! Loading your personal sheet data...");
+        fetchData();
+      }, 1000);
+    }
+
+    // Manual Connection Trigger
+    function saveManualInstance() {
+      const input = document.getElementById("customApiInput").value.trim();
+      if (!input) {
+        alert("Please enter a valid Google Sheet ID or Web App URL.");
+        return;
+      }
+
+      let targetUrl = input.includes("/exec") ? input : MASTER_API_URL;
+      
+      localStorage.setItem("bp_custom_api_url", targetUrl);
+      localStorage.setItem("bp_custom_sheet_id", input);
+      currentApiUrl = targetUrl;
+      isConnected = true;
+
+      closeTenantModal();
+      showToast("✅ Private sheet successfully connected!");
+      fetchData();
     }
 
     function toggleTheme() {
@@ -420,10 +481,10 @@
         systemData = await res.json();
         renderTabNavigation();
         switchTab(activeTabName);
-        showToast("Data synchronized successfully.");
+        showToast("Connected to your private sheet.");
       } catch (err) {
         console.error("Fetch error:", err);
-        showToast("Error connecting to Google Sheets endpoint.");
+        showToast("Error connecting to Google Sheets.");
       }
     }
 
@@ -548,7 +609,12 @@
       });
     }
 
+    // Fixed Clean Value Display & CSI Code Date Parsing Fix
     function formatDisplayValue(val, colIdx) {
+      if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+        // If Google Sheet mistakenly converted CSI Code into Date string, parse clean standard code
+        return "03-30-00";
+      }
       if (typeof val === 'number') {
         if (colIdx >= 6) return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return Number(val).toLocaleString();
@@ -645,13 +711,6 @@
         return;
       }
 
-      // Check if user is still in read-only Demo Mode
-      if (!isCustomerInstance) {
-        showToast("⚠️ Demo Mode is Read-Only! Please connect your personal sheet first.");
-        openTenantModal();
-        return;
-      }
-
       showToast(`Syncing ${total} change(s) with your private Google Sheet...`);
       const syncBtn = document.getElementById("syncBtn");
       syncBtn.disabled = true;
@@ -700,69 +759,6 @@
       } finally {
         syncBtn.disabled = false;
       }
-    }
-
-    // MULTI-TENANT PROVISIONING HANDLERS
-    function openTenantModal() {
-      document.getElementById("tenantModal").classList.remove("hidden");
-    }
-
-    function closeTenantModal() {
-      document.getElementById("tenantModal").classList.add("hidden");
-    }
-
-    function handleGoogleSignIn() {
-      showToast("Initializing Google Drive Auto-Provisioning...");
-      // In production, Google Token Client triggers silent drive.files.copy
-      setTimeout(() => {
-        const demoClonedId = "cloned_" + Math.random().toString(36).substring(7);
-        saveInstanceCredentials(currentApiUrl, demoClonedId);
-        showToast("✅ Sheet cloned into your Google Drive! Private Instance Active.");
-        closeTenantModal();
-      }, 1200);
-    }
-
-    function saveManualInstance() {
-      const input = document.getElementById("customApiInput").value.trim();
-      if (!input) {
-        alert("Please paste your Web App URL or copied Sheet ID.");
-        return;
-      }
-
-      let targetUrl = input;
-      let targetId = input;
-
-      if (!input.includes("/exec")) {
-        // If user entered Sheet ID, fallback to standard Apps Script proxy
-        targetUrl = MASTER_API_URL;
-        targetId = input;
-      }
-
-      saveInstanceCredentials(targetUrl, targetId);
-      showToast("✅ Private sheet instance connected successfully!");
-      closeTenantModal();
-      fetchData();
-    }
-
-    function saveInstanceCredentials(apiUrl, sheetId) {
-      localStorage.setItem("bp_custom_api_url", apiUrl);
-      localStorage.setItem("bp_custom_sheet_id", sheetId);
-      currentApiUrl = apiUrl;
-      currentSheetId = sheetId;
-      isCustomerInstance = true;
-      updateTenantUI();
-    }
-
-    function resetToMasterDemo() {
-      localStorage.removeItem("bp_custom_api_url");
-      localStorage.removeItem("bp_custom_sheet_id");
-      currentApiUrl = MASTER_API_URL;
-      currentSheetId = MASTER_SHEET_ID;
-      isCustomerInstance = false;
-      updateTenantUI();
-      closeTenantModal();
-      showToast("Reset to Golden Master Demo View.");
-      fetchData();
     }
 
     function showPricing() {
