@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BuildPro Cost Estimator — Enterprise Executive Operating System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366F1', 600: '#4F46E5', 700: '#4338CA' },
+            slateDark: { 800: '#1E293B', 900: '#0F172A' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    [contenteditable="true"]:focus {
+      outline: 2px solid #6366F1;
+      background-color: rgba(99, 102, 241, 0.08);
+      border-radius: 2px;
+    }
+    @media print {
+      header, nav, #unlockedControls, #toast, .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      table { border: 1px solid #CBD5E1 !important; width: 100% !important; }
+      th, td { border: 1px solid #E2E8F0 !important; font-size: 10px !important; }
+    }
+  </style>
+</head>
+<body class="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+
+  <!-- CONFIGURATION CONSTANTS -->
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxpVi5rk1-LlgvCuayoh3UnfpeFzrndgsOFmbTpQ1skZ275wGGzzLxq-v95DpXjNaDa/exec";
+    const SHEET_ID = "1uQm4BgQz2K0rfF6ay9ockaKPRHv5ghPltjzjng7_W4E";
+    const STARTER_SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
+    const PRO_SHEET_ID = "1HedWn_akIsJJSfpHfepwKAliXfh-MroSyO_ojJP17x0";
+  </script>
+
+  <!-- TOP HEADER SUITE -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 text-white font-black text-lg p-2 rounded-lg shadow-sm">BP</div>
+        <div>
+          <h1 class="font-bold text-base md:text-lg leading-tight flex items-center gap-2">
+            BuildPro Cost Estimator
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700">Executive OS ($97)</span>
+          </h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">All 10 Enterprise Modules Active & Fully Synchronized</p>
+        </div>
+      </div>
+
+      <div class="flex items-center flex-wrap gap-2">
+        <!-- Clone to Drive Button -->
+        <a id="cloneBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+          📁 Clone to Google Drive
+        </a>
+
+        <!-- Universal Multi-Tier Migration Hub Button -->
+        <button onclick="openMigrationModal()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 transition flex items-center gap-1.5 shadow-sm">
+          📥 Auto-Sync Previous Data
+        </button>
+
+        <!-- Print / PDF Export Button -->
+        <button onclick="window.print()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+          🖨️ Export PDF
+        </button>
+
+        <!-- Sync Button with Live Counter Badge -->
+        <button id="syncBtn" onclick="syncWithGoogleSheet()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm">
+          <span>⚡ Sync with Google Sheet</span>
+          <span id="pendingBadge" class="bg-indigo-800 text-indigo-100 px-1.5 py-0.5 rounded text-[10px]">🟢 0 Pending</span>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" class="p-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Toggle Theme">
+          <span id="themeIcon">☀️</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TAB BAR -->
+  <nav class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-thin">
+    <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer"></div>
+  </nav>
+
+  <!-- MAIN OPERATIONAL CONTENT -->
+  <main class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
+    <!-- Controls Bar -->
+    <div class="flex items-center justify-between gap-4 flex-wrap">
+      <div>
+        <h2 id="currentTabTitle" class="text-lg font-bold">Loading Module...</h2>
+        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">100% Unlocked C-Suite computational engine connected to Google Sheets.</p>
+      </div>
+      <div id="unlockedControls" class="flex items-center gap-2">
+        <button onclick="addNewRow()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition flex items-center gap-1 shadow-sm">
+          ➕ Add Row
+        </button>
+      </div>
+    </div>
+
+    <!-- Data Table Container -->
+    <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-800/60 shadow-sm">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs md:text-sm border-collapse" id="dataTable">
+          <thead id="tableHead" class="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-semibold text-slate-700 dark:text-slate-200">
+            <tr><th class="p-3">Loading headers...</th></tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
+            <tr><td class="p-6 text-center text-slate-400">Fetching live spreadsheet records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TAB 11: ENTERPRISE LICENSE HUB -->
+    <section id="licenseSection" class="hidden space-y-6 pt-4">
+      <div class="max-w-3xl mx-auto border-2 border-indigo-500/40 rounded-2xl p-6 bg-indigo-50/20 dark:bg-slate-800/60 space-y-4 shadow-sm">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Enterprise Commercial License</span>
+            <h3 class="text-xl font-black mt-0.5">BuildPro Executive Operating System</h3>
+          </div>
+          <span class="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+            ✓ Lifetime Unlocked
+          </span>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-300">
+          This system is licensed for full enterprise commercial utilization across unlimited project takeoffs, subcontractor leveling tenders, executive cashflow models, and corporate audits.
+        </p>
+        <hr class="border-slate-200 dark:border-slate-700">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div>
+            <span class="text-slate-400">Active License Holder:</span>
+            <div class="font-bold text-slate-800 dark:text-slate-200">Executive Commercial Tier</div>
+          </div>
+          <div>
+            <span class="text-slate-400">Connected API Engine:</span>
+            <div class="font-mono text-[11px] text-slate-700 dark:text-slate-300 truncate">BuildPro Enterprise v3.0</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MULTI-TIER MIGRATION MODAL (STARTER OR PRO -> ENTERPRISE) -->
+  <div id="migrationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-indigo-100 text-indigo-600 dark:bg-indigo-950 dark:text-indigo-300">
+          📥
+        </div>
+        <h3 class="text-lg font-black">Universal Historical Migration</h3>
+        <p class="text-xs text-slate-500">Pull custom records from your Starter ($0) or Professional ($15) editions into Enterprise with zero formula breakage.</p>
+      </div>
+
+      <div class="space-y-2">
+        <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Select Previous Source Edition</label>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button type="button" onclick="setMigrationSource('starter')" id="srcStarterBtn" class="p-2 border rounded-lg text-center font-semibold border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-indigo-500 transition">
+            Starter ($0)
+          </button>
+          <button type="button" onclick="setMigrationSource('pro')" id="srcProBtn" class="p-2 border-2 border-indigo-600 rounded-lg text-center font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40">
+            Professional ($15)
+          </button>
+        </div>
+        <input id="historicalSheetInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" placeholder="Source Sheet ID">
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeMigrationModal()" class="w-1/2 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
+          Cancel
+        </button>
+        <button id="startMigrateBtn" onclick="executeHistoricalMigration()" class="w-1/2 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm transition">
+          Sync Now
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
+
+  <!-- PRODUCTION LOGIC SCRIPT -->
+  <script>
+    let systemData = null;
+    let activeTabName = "01_Cost_Takeoff_Engine";
+    let pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/copy`;
+      document.getElementById("historicalSheetInput").value = PRO_SHEET_ID;
+
+      if (localStorage.theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.getElementById('themeIcon').innerText = '🌙';
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('themeIcon').innerText = '☀️';
+      }
+
+      fetchData();
+    });
+
+    function toggleTheme() {
+      if (document.documentElement.classList.contains('dark')) {
+        document.documentElement.classList.remove('dark');
+        localStorage.theme = 'light';
+        document.getElementById('themeIcon').innerText = '☀️';
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.theme = 'dark';
+        document.getElementById('themeIcon').innerText = '🌙';
+      }
+    }
+
+    async function fetchData() {
+      try {
+        showToast("Fetching live Enterprise Google Sheet records...");
+        const res = await fetch(API_URL);
+        systemData = await res.json();
+        renderTabNavigation();
+        switchTab(activeTabName);
+        showToast("Connected to Enterprise Executive Core.");
+      } catch (err) {
+        console.error("Fetch error:", err);
+        showToast("Error connecting to Google Sheets API.");
+      }
+    }
+
+    function renderTabNavigation() {
+      const container = document.getElementById("navTabsContainer");
+      container.innerHTML = "";
+
+      const tabKeys = Object.keys(systemData.sheets);
+      tabKeys.forEach(tabName => {
+        const btn = document.createElement("button");
+        btn.className = `px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition flex items-center gap-1 ${
+          activeTabName === tabName 
+            ? 'bg-indigo-600 text-white' 
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+        }`;
+        btn.innerHTML = `${tabName}`;
+        btn.onclick = () => switchTab(tabName);
+        container.appendChild(btn);
+      });
+
+      const licenseBtn = document.createElement("button");
+      licenseBtn.className = "px-3 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition flex items-center gap-1";
+      licenseBtn.innerHTML = "💎 Enterprise License";
+      licenseBtn.onclick = () => showLicenseHub();
+      container.appendChild(licenseBtn);
+    }
+
+    function switchTab(tabName) {
+      activeTabName = tabName;
+      document.getElementById("licenseSection").classList.add("hidden");
+      document.getElementById("dataTable").parentElement.parentElement.classList.remove("hidden");
+      document.getElementById("unlockedControls").classList.remove("hidden");
+      renderTabNavigation();
+
+      const sheet = systemData.sheets[tabName];
+      document.getElementById("currentTabTitle").innerText = tabName;
+
+      // Render Headers
+      const thead = document.getElementById("tableHead");
+      thead.innerHTML = "";
+      const headRow = document.createElement("tr");
+      sheet.headers.forEach(h => {
+        const th = document.createElement("th");
+        th.className = "p-3 whitespace-nowrap text-xs";
+        th.innerText = h;
+        headRow.appendChild(th);
+      });
+      const actionTh = document.createElement("th");
+      actionTh.className = "p-3 text-center text-xs";
+      actionTh.innerText = "Action";
+      headRow.appendChild(actionTh);
+      thead.appendChild(headRow);
+
+      renderTableBody(sheet);
+    }
+
+    function renderTableBody(sheet) {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      sheet.rows.forEach((row, rIdx) => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/40 transition";
+        const actualRowNumber = 4 + rIdx;
+
+        row.forEach((cellVal, cIdx) => {
+          const td = document.createElement("td");
+          td.className = "p-3 whitespace-nowrap text-xs";
+
+          if (isCellEditable(activeTabName, cIdx)) {
+            td.contentEditable = "true";
+            td.innerText = formatDisplayValue(cellVal, cIdx);
+            td.onblur = (e) => handleCellEdit(actualRowNumber, cIdx + 1, e.target.innerText, tr, rIdx);
+          } else {
+            td.innerText = formatDisplayValue(cellVal, cIdx);
+            td.className += " font-semibold text-slate-700 dark:text-slate-300";
+          }
+          tr.appendChild(td);
+        });
+
+        // Delete Row Action
+        const actionTd = document.createElement("td");
+        actionTd.className = "p-3 text-center whitespace-nowrap";
+        actionTd.innerHTML = `
+          <button onclick="deleteRow('${activeTabName}', ${actualRowNumber}, this)" class="text-slate-400 hover:text-rose-500 p-1.5 transition-colors" title="Delete Row">
+            🗑️
+          </button>
+        `;
+        tr.appendChild(actionTd);
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function isCellEditable(tab, colIdx) {
+      if (tab === "01_Cost_Takeoff_Engine") return colIdx <= 8;
+      if (tab === "02_CSI_Item_Directory") return true;
+      if (tab === "03_Trade_Bid_Leveling") return colIdx <= 3;
+      if (tab === "04_Direct_Procurement_PO") return colIdx <= 4;
+      if (tab === "05_Executive_BI_Cockpit") return colIdx <= 4;
+      if (tab === "06_Cashflow_S_Curve") return colIdx <= 2;
+      if (tab === "07_Labor_Burden_Matrix") return colIdx <= 3;
+      if (tab === "08_Sub_Compliance_Retainage") return colIdx === 0 || colIdx === 1 || colIdx === 2 || colIdx === 5 || colIdx === 6;
+      if (tab === "09_Audit_Critical_Alerts") return colIdx <= 3;
+      if (tab === "10_Enterprise_Global_Config") return colIdx <= 2 || colIdx === 4;
+      return true;
+    }
+
+    function formatDisplayValue(val, colIdx) {
+      if (typeof val === 'number') {
+        if (activeTabName.includes("10_") || (activeTabName.includes("08_") && colIdx === 2)) {
+          return (val * 100).toFixed(1) + '%';
+        }
+        if (activeTabName.includes("07_") && colIdx === 6) {
+          return val.toFixed(2) + 'x';
+        }
+        if (colIdx >= 1 && !activeTabName.includes("02_")) {
+          return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return Number(val).toLocaleString();
+      }
+      return val;
+    }
+
+    function handleCellEdit(rowNum, colNum, newVal, rowElement, rIdx) {
+      const cleanVal = newVal.replace(/[\$,%x]/g, '').trim();
+      const numVal = isNaN(cleanVal) ? cleanVal : Number(cleanVal);
+
+      pendingChanges.batchUpdates.push({
+        tab: activeTabName,
+        row: rowNum,
+        col: colNum,
+        value: numVal
+      });
+
+      systemData.sheets[activeTabName].rows[rIdx][colNum - 1] = numVal;
+
+      // Real-time client-side calculation triggers for key modules
+      const cells = rowElement.getElementsByTagName("td");
+      if (activeTabName === "01_Cost_Takeoff_Engine") {
+        const qty = parseFloat(cells[4].innerText.replace(/[\$,]/g, '')) || 0;
+        const mat = parseFloat(cells[6].innerText.replace(/[\$,]/g, '')) || 0;
+        const lab = parseFloat(cells[7].innerText.replace(/[\$,]/g, '')) || 0;
+        const eq = parseFloat(cells[8].innerText.replace(/[\$,]/g, '')) || 0;
+        const unitCost = mat + lab + eq;
+        cells[9].innerText = '$' + unitCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cells[10].innerText = '$' + (qty * unitCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else if (activeTabName === "03_Trade_Bid_Leveling") {
+        const base = parseFloat(cells[2].innerText.replace(/[\$,]/g, '')) || 0;
+        const adj = parseFloat(cells[3].innerText.replace(/[\$,]/g, '')) || 0;
+        const norm = base + adj;
+        const variance = (norm - 250000) / 250000;
+        cells[4].innerText = '$' + norm.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        cells[5].innerText = (variance * 100).toFixed(1) + '%';
+        cells[6].innerText = variance > 0.05 ? "HIGH EXPOSURE" : "OPTIMAL";
+      } else if (activeTabName === "05_Executive_BI_Cockpit") {
+        const contract = parseFloat(cells[1].innerText.replace(/[\$,]/g, '')) || 0;
+        const direct = parseFloat(cells[3].innerText.replace(/[\$,]/g, '')) || 0;
+        const committed = parseFloat(cells[4].innerText.replace(/[\$,]/g, '')) || 0;
+        const slippage = contract > 0 ? (((contract - (direct + committed)) / contract) - 0.18) : 0;
+        const eac = direct + committed + (contract * 0.06);
+        cells[5].innerText = (slippage * 100).toFixed(1) + '%';
+        cells[6].innerText = '$' + eac.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      updatePendingBadge();
+    }
+
+    function addNewRow() {
+      const sheet = systemData.sheets[activeTabName];
+      const newIndex = sheet.rows.length + 1;
+      let newRowValues = [];
+
+      if (activeTabName === "01_Cost_Takeoff_Engine") {
+        newRowValues = [newIndex, "01-00-00", "New Project Item", "General", 100, "EA", 12.00, 18.00, 3.00, 33.00, 3300.00];
+      } else if (activeTabName === "02_CSI_Item_Directory") {
+        newRowValues = ["01-00-00", "01 - General Requirements", "Specification Standard", "EA", 12.00, 18.00, 0.05];
+      } else if (activeTabName === "03_Trade_Bid_Leveling") {
+        newRowValues = ["01 General", "Commercial Bidder LLC", 160000, 4500, 164500, "-34.2%", "OPTIMAL", "Recommended Low"];
+      } else if (activeTabName === "04_Direct_Procurement_PO") {
+        newRowValues = ["PO-1060", "Global Supply Corp", "Drywall Screws Bulk", 500, 8.50, 4462.50, 191.25];
+      } else if (activeTabName === "05_Executive_BI_Cockpit") {
+        newRowValues = ["Phase 4 - Commissioning", 180000, 0, 0, 0, "-18.0%", 10800.00];
+      } else if (activeTabName === "06_Cashflow_S_Curve") {
+        newRowValues = ["Month " + newIndex, 150000, 145000, -5000, 1200000, 1180000, 20000];
+      } else if (activeTabName === "07_Labor_Burden_Matrix") {
+        newRowValues = ["Apprentice Laborer", 24.00, 6.00, 3.20, 1.84, 35.04, 1.46];
+      } else if (activeTabName === "08_Sub_Compliance_Retainage") {
+        newRowValues = ["Apex Mechanical", 95000, 0.10, 9500, 85500, "Active Approved", "Conditional Pending"];
+      } else if (activeTabName === "09_Audit_Critical_Alerts") {
+        newRowValues = ["2026-10-24 10:00", "01 General", 50000, 51200, 1200, "+2.4%", "STABLE MONITOR"];
+      } else {
+        newRowValues = ["Contingency Reserve Macro", 0.05, 0.01, 0.06, 0.02, "Active System-Wide"];
+      }
+
+      sheet.rows.push(newRowValues);
+      pendingChanges.addedRows.push({ tab: activeTabName, rowData: newRowValues });
+
+      renderTableBody(sheet);
+      updatePendingBadge();
+      showToast("New row added to " + activeTabName);
+    }
+
+    function deleteRow(tabName, rowNumber, btnElement) {
+      if (!confirm(`Are you sure you want to delete row #${rowNumber}?`)) return;
+
+      const tr = btnElement.closest("tr");
+      tr.remove();
+
+      const rIdx = rowNumber - 4;
+      systemData.sheets[tabName].rows.splice(rIdx, 1);
+
+      pendingChanges.deletedRows.push({ tab: tabName, rowIndex: rowNumber });
+      updatePendingBadge();
+      showToast(`Row #${rowNumber} marked for deletion.`);
+    }
+
+    function updatePendingBadge() {
+      const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
+      const badge = document.getElementById("pendingBadge");
+      const btn = document.getElementById("syncBtn");
+
+      if (total > 0) {
+        badge.className = "bg-amber-400 text-slate-900 px-1.5 py-0.5 rounded text-[10px] font-bold";
+        badge.innerText = `🟡 ${total} Pending`;
+        btn.classList.add("ring-2", "ring-amber-400");
+      } else {
+        badge.className = "bg-indigo-800 text-indigo-100 px-1.5 py-0.5 rounded text-[10px]";
+        badge.innerText = `🟢 0 Pending`;
+        btn.classList.remove("ring-2", "ring-amber-400");
+      }
+    }
+
+    async function syncWithGoogleSheet() {
+      const total = pendingChanges.batchUpdates.length + pendingChanges.addedRows.length + pendingChanges.deletedRows.length;
+      if (total === 0) {
+        showToast("All enterprise modules are already synchronized.");
+        return;
+      }
+
+      showToast(`Syncing ${total} change(s) across enterprise core...`);
+      const syncBtn = document.getElementById("syncBtn");
+      syncBtn.disabled = true;
+
+      try {
+        if (pendingChanges.batchUpdates.length > 0) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "batchUpdate",
+              tabName: activeTabName,
+              updates: pendingChanges.batchUpdates
+            })
+          });
+        }
+
+        for (const item of pendingChanges.addedRows) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "addRow",
+              tabName: item.tab,
+              rowData: item.rowData
+            })
+          });
+        }
+
+        for (const item of pendingChanges.deletedRows) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "deleteRow",
+              tabName: item.tab,
+              rowIndex: item.rowIndex
+            })
+          });
+        }
+
+        pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
+        updatePendingBadge();
+        showToast("⚡ All changes committed to Enterprise Sheet!");
+        fetchData();
+      } catch (err) {
+        console.error("Sync error:", err);
+        showToast("Failed to write to Google Sheets. Check permissions.");
+      } finally {
+        syncBtn.disabled = false;
+      }
+    }
+
+    // MULTI-TIER MIGRATION HANDLERS
+    function openMigrationModal() {
+      document.getElementById("migrationModal").classList.remove("hidden");
+    }
+
+    function closeMigrationModal() {
+      document.getElementById("migrationModal").classList.add("hidden");
+    }
+
+    function setMigrationSource(tier) {
+      const starterBtn = document.getElementById("srcStarterBtn");
+      const proBtn = document.getElementById("srcProBtn");
+      const input = document.getElementById("historicalSheetInput");
+
+      if (tier === 'starter') {
+        input.value = STARTER_SHEET_ID;
+        starterBtn.className = "p-2 border-2 border-indigo-600 rounded-lg text-center font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40";
+        proBtn.className = "p-2 border rounded-lg text-center font-semibold border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900";
+      } else {
+        input.value = PRO_SHEET_ID;
+        proBtn.className = "p-2 border-2 border-indigo-600 rounded-lg text-center font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40";
+        starterBtn.className = "p-2 border rounded-lg text-center font-semibold border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900";
+      }
+    }
+
+    async function executeHistoricalMigration() {
+      const sourceId = document.getElementById("historicalSheetInput").value.trim();
+      if (!sourceId) {
+        alert("Please provide a valid Source Sheet ID.");
+        return;
+      }
+
+      const btn = document.getElementById("startMigrateBtn");
+      btn.disabled = true;
+      btn.innerText = "Syncing...";
+      showToast("Executing multi-tier historical data migration...");
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "importHistorical",
+            sourceSheetId: sourceId
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(`✅ ${result.message} (${result.count} records)`);
+          closeMigrationModal();
+          fetchData();
+        } else {
+          showToast("Migration error: " + result.message);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast("Failed to migrate. Make sure Source Sheet is accessible.");
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Sync Now";
+      }
+    }
+
+    function showLicenseHub() {
+      activeTabName = "License";
+      document.getElementById("dataTable").parentElement.parentElement.classList.add("hidden");
+      document.getElementById("unlockedControls").classList.add("hidden");
+      document.getElementById("currentTabTitle").innerText = "Commercial Enterprise Hub";
+      document.getElementById("currentTabDesc").innerText = "Executive Commercial Operating License & Governance.";
+      document.getElementById("licenseSection").classList.remove("hidden");
+      renderTabNavigation();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.classList.remove("opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("opacity-0", "pointer-events-none");
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
