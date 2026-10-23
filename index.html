@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BuildPro Cost Estimator — Cloud Operations Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -25,17 +24,17 @@
       background-color: rgba(16, 185, 129, 0.08);
       border-radius: 2px;
     }
-    /* Lock background completely when modal is open */
-    body.locked {
-      overflow: hidden;
+    .modal-backdrop-lock {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
   </style>
 </head>
 <body class="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
 
-  <!-- MASTER CONFIGURATION CONSTANTS -->
+  <!-- CONFIGURATION CONSTANTS -->
   <script>
-    const MASTER_API_URL = "https://script.google.com/macros/s/AKfycbwuSGylKvYclTfY8XCr9BZ1T0ifBcSWtqql1FAkXCqTYGqiQ5CpgVlolkhpFxWHhvZg/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwuSGylKvYclTfY8XCr9BZ1T0ifBcSWtqql1FAkXCqTYGqiQ5CpgVlolkhpFxWHhvZg/exec";
     const MASTER_SHEET_ID = "1EGCMBQiS-i2d4-VA7cOUHSp1AZWmDET2iV9jUqmpmU4";
     const PRO_CHECKOUT_URL = "#";
     const ENTERPRISE_CHECKOUT_URL = "#";
@@ -49,28 +48,24 @@
         <div>
           <h1 class="font-bold text-base md:text-lg leading-tight flex items-center gap-2">
             BuildPro Cost Estimator
-            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Starter 10% Free</span>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">Starter Community</span>
           </h1>
-          <div class="flex items-center gap-2 mt-0.5">
-            <span id="tenantBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
-              🟢 Connected to Your Private Sheet
-            </span>
-          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400" id="instanceStatusText">Connected to Private Google Drive Sheet</p>
         </div>
       </div>
 
       <div class="flex items-center flex-wrap gap-2">
         <!-- Clone to Drive Button -->
-        <a id="cloneBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+        <a id="cloneHeaderBtn" href="#" target="_blank" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
           📁 Clone to Google Drive
         </a>
 
-        <!-- Account / Sheet Switcher Settings Button -->
-        <button onclick="openTenantModal(false)" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-700 dark:text-slate-300 transition flex items-center gap-1.5 shadow-sm">
-          ⚙️ Sheet Settings
+        <!-- Instance Config Switcher -->
+        <button onclick="openInstanceConfigModal()" class="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-1.5 shadow-sm">
+          ⚙️ Connected Sheet
         </button>
 
-        <!-- Dynamic Two-Way Sync Button -->
+        <!-- Sync Button with Live Counter Badge -->
         <button id="syncBtn" onclick="syncWithGoogleSheet()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 shadow-sm">
           <span>⚡ Sync with Google Sheet</span>
           <span id="pendingBadge" class="bg-emerald-800 text-emerald-100 px-1.5 py-0.5 rounded text-[10px]">🟢 0 Pending</span>
@@ -89,13 +84,13 @@
     </div>
   </header>
 
-  <!-- NAVIGATION TAB BAR -->
+  <!-- NAVIGATION TAB BAR (10 TABS + PRICING) -->
   <nav class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-thin">
     <div class="max-w-7xl mx-auto flex items-center gap-1 px-4 py-2" id="navTabsContainer"></div>
   </nav>
 
   <!-- MAIN OPERATIONAL CONTENT -->
-  <main id="mainAppArea" class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
+  <main class="max-w-7xl mx-auto flex-1 w-full p-4 md:p-6 space-y-4">
     <!-- Notice / Lock Banner -->
     <div id="tierBanner" class="hidden p-3.5 rounded-lg text-xs md:text-sm font-medium flex items-center justify-between border"></div>
 
@@ -103,7 +98,7 @@
     <div class="flex items-center justify-between gap-4 flex-wrap">
       <div>
         <h2 id="currentTabTitle" class="text-lg font-bold">Loading Module...</h2>
-        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">Live operational data mirrored from your private Google Sheet.</p>
+        <p id="currentTabDesc" class="text-xs text-slate-500 dark:text-slate-400">Live operational data mirrored from your private Google Sheet instance.</p>
       </div>
       <div id="unlockedControls" class="flex items-center gap-2">
         <button onclick="addNewRow()" class="text-xs font-semibold px-3 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 transition flex items-center gap-1 shadow-sm">
@@ -120,7 +115,7 @@
             <tr><th class="p-3">Loading headers...</th></tr>
           </thead>
           <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800/80">
-            <tr><td class="p-6 text-center text-slate-400">Please connect your private sheet to load records...</td></tr>
+            <tr><td class="p-6 text-center text-slate-400">Loading private instance records...</td></tr>
           </tbody>
         </table>
       </div>
@@ -133,6 +128,7 @@
         <p class="text-slate-500 text-sm">Scale your construction estimating workflow from simple cost takeoffs to full C-suite executive intelligence.</p>
       </div>
 
+      <!-- Pricing Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <!-- Starter Card -->
         <div class="rounded-2xl border-2 border-emerald-500/40 p-6 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between">
@@ -210,7 +206,7 @@
         </div>
       </div>
 
-      <!-- Feature Matrix -->
+      <!-- Feature Matrix Table -->
       <div class="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden mt-8">
         <div class="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 font-bold text-sm">
           System Feature Matrix Comparison
@@ -294,62 +290,86 @@
   </main>
 
   <!-- ========================================================================= -->
-  <!-- MANDATORY GATEKEEPER ONBOARDING MODAL (UNCLOSABLE UNTIL CONNECTED)       -->
+  <!-- MANDATORY UNCLOSABLE FIRST-RUN ONBOARDING MODAL (GATEKEEPER) -->
   <!-- ========================================================================= -->
-  <div id="tenantModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-5 animate-in fade-in zoom-in duration-200">
+  <div id="onboardingModal" class="fixed inset-0 bg-slate-950/80 modal-backdrop-lock z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-lg w-full rounded-2xl p-6 md:p-8 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-6">
       
-      <div class="text-center space-y-1.5">
-        <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300 shadow-inner">
-          🔒
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300 rounded-2xl mx-auto flex items-center justify-center text-3xl font-black shadow-inner">
+          ⚡
         </div>
-        <h3 class="text-xl font-black text-slate-900 dark:text-white">Connect Your Private Workspace</h3>
-        <p class="text-xs text-slate-500 dark:text-slate-400">
-          To start using BuildPro Estimator, link your personal Google account. All calculations and takeoffs will be saved securely to your personal Google Drive.
+        <h2 class="text-xl md:text-2xl font-black tracking-tight">Connect Your Private Workspace</h2>
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+          Your project takeoffs and sensitive pricing data are saved exclusively in your own private Google Drive. Follow this 2-step setup to activate your cloud workspace:
         </p>
       </div>
 
-      <!-- Action 1: 1-Click Google OAuth Sign-in -->
-      <div class="p-4 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 space-y-2">
-        <div class="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-          <span>✨</span> Recommended (Fastest)
+      <div class="space-y-4">
+        <!-- Step 1: Clone -->
+        <div class="p-4 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">Create Private Copy</span>
+          </div>
+          <p class="text-xs text-slate-600 dark:text-slate-300">
+            Click below to clone the Golden Master Template directly into your private Google Drive account.
+          </p>
+          <a id="modalCloneBtn" href="#" target="_blank" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm">
+            📁 Step 1: Clone to My Google Drive
+          </a>
         </div>
-        <p class="text-[11px] text-slate-600 dark:text-slate-400">
-          Sign in with Google to automatically create a private, isolated copy of the BuildPro Engine in your Google Drive.
-        </p>
-        <button onclick="handleGoogleSignIn()" class="w-full py-2.5 px-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-white flex items-center justify-center gap-2.5 transition shadow-sm">
-          <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.98 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/></svg>
-          Sign in & Auto-Provision Sheet
-        </button>
+
+        <!-- Step 2: Connect Instance -->
+        <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-bold text-xs flex items-center justify-center">2</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">Connect Cloned Instance</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Copy your new Google Sheet URL (from your browser bar) and paste it below:
+          </p>
+          <input id="onboardSheetInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono" placeholder="https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit">
+          <button onclick="activateInstanceFromOnboarding()" class="w-full py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-bold text-xs transition shadow-sm">
+            🚀 Activate & Open Workspace
+          </button>
+        </div>
       </div>
 
-      <div class="relative flex py-1 items-center">
-        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
-        <span class="flex-shrink mx-3 text-[10px] uppercase font-bold text-slate-400">Or Manual Link</span>
-        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+      <p class="text-[11px] text-center text-slate-400">
+        🔒 100% Client-Side Privacy: Your workspace connects directly to your private Google account.
+      </p>
+    </div>
+  </div>
+
+  <!-- INSTANCE CONFIG SWITCHER MODAL -->
+  <div id="instanceConfigModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+      <div class="text-center space-y-1">
+        <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100">
+          ⚙️
+        </div>
+        <h3 class="text-lg font-black">Connected Workspace Instance</h3>
+        <p class="text-xs text-slate-500">View or re-link your private Google Sheet ID.</p>
       </div>
 
-      <!-- Action 2: Manual Clone Fallback -->
       <div class="space-y-2">
-        <p class="text-[11px] text-slate-500">
-          Already cloned the sheet? Paste your copied <strong>Sheet ID</strong> or <strong>Web App URL</strong> below:
-        </p>
-        <input id="customApiInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono" placeholder="Paste your Sheet ID or Web App URL">
-        <button onclick="saveManualInstance()" class="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs shadow transition">
-          Connect Private Sheet Instance
-        </button>
+        <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Active Google Sheet ID</label>
+        <input id="configSheetInput" type="text" class="w-full text-xs p-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 focus:outline-none font-mono">
       </div>
 
-      <!-- Dismiss Button only visible if already configured and opening from Settings -->
-      <div id="modalDismissContainer" class="hidden pt-1">
-        <button onclick="closeTenantModal()" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition text-center">
-          Close Settings
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeInstanceConfigModal()" class="w-1/2 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 font-semibold text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-100 transition">
+          Close
+        </button>
+        <button onclick="updateInstanceSheet()" class="w-1/2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition">
+          Save Changes
         </button>
       </div>
     </div>
   </div>
 
-  <!-- UPGRADE MODAL -->
+  <!-- UPGRADE MODAL (ZERO MAYBE LATER BUTTONS) -->
   <div id="upgradeModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-white dark:bg-slate-800 max-w-md w-full rounded-2xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700 text-center space-y-4">
       <div class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-2xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-300">
@@ -369,24 +389,23 @@
     </div>
   </div>
 
-  <!-- TOAST CONTAINER -->
+  <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-xs shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none z-50"></div>
 
-  <!-- JAVASCRIPT CONTROLLER -->
+  <!-- PRODUCTION APPLICATION SCRIPT -->
   <script>
-    // State Check: Has the user connected their private sheet?
-    let savedApiUrl = localStorage.getItem("bp_custom_api_url");
-    let currentApiUrl = savedApiUrl || MASTER_API_URL;
-    let isConnected = Boolean(savedApiUrl);
-
     let systemData = null;
     let activeTabName = "01_Cost_Takeoff_Engine";
     let pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
     let currentModalTarget = "pro";
 
+    // INITIALIZATION & GATEKEEPER CHECK
     window.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("cloneBtn").href = `https://docs.google.com/spreadsheets/d/${MASTER_SHEET_ID}/copy`;
+      const cloneUrl = `https://docs.google.com/spreadsheets/d/${MASTER_SHEET_ID}/copy`;
+      document.getElementById("cloneHeaderBtn").href = cloneUrl;
+      document.getElementById("modalCloneBtn").href = cloneUrl;
 
+      // Theme Check
       if (localStorage.theme === 'dark') {
         document.documentElement.classList.add('dark');
         document.getElementById('themeIcon').innerText = '🌙';
@@ -395,73 +414,66 @@
         document.getElementById('themeIcon').innerText = '☀️';
       }
 
-      // Check Gatekeeper: If user is not connected, pop-up MUST remain open
-      if (!isConnected) {
-        document.body.classList.add("locked");
-        openTenantModal(true); // Mandatory lock
+      // Mandatory Gatekeeper Check
+      const connectedId = localStorage.getItem("connectedSheetId");
+      if (!connectedId) {
+        document.getElementById("onboardingModal").classList.remove("hidden");
       } else {
-        closeTenantModal();
-        fetchData();
+        document.getElementById("onboardingModal").classList.add("hidden");
+        document.getElementById("instanceStatusText").innerText = `Connected Sheet ID: ${connectedId.substring(0, 8)}...`;
+        fetchData(connectedId);
       }
     });
 
-    function openTenantModal(isMandatory = false) {
-      const modal = document.getElementById("tenantModal");
-      const dismissBtn = document.getElementById("modalDismissContainer");
-      modal.classList.remove("hidden");
-
-      if (isMandatory) {
-        dismissBtn.classList.add("hidden");
-      } else {
-        dismissBtn.classList.remove("hidden");
-      }
+    // Helper: Extract Sheet ID from URL or Raw Input
+    function extractSheetId(inputStr) {
+      if (!inputStr) return null;
+      inputStr = inputStr.trim();
+      const match = inputStr.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      return match ? match[1] : inputStr;
     }
 
-    function closeTenantModal() {
-      document.getElementById("tenantModal").classList.add("hidden");
-      document.body.classList.remove("locked");
-    }
+    // Onboarding Activation Action
+    function activateInstanceFromOnboarding() {
+      const input = document.getElementById("onboardSheetInput").value.trim();
+      const extractedId = extractSheetId(input);
 
-    // Google Sign-In Provisioning Trigger
-    function handleGoogleSignIn() {
-      showToast("Verifying Google Account & Cloning Sheet...");
-      setTimeout(() => {
-        // Save customer instance credentials
-        const userInstanceUrl = MASTER_API_URL; // Or customer's provisioned URL
-        const userSheetId = "customer_instance_" + Math.random().toString(36).substring(7);
-        
-        localStorage.setItem("bp_custom_api_url", userInstanceUrl);
-        localStorage.setItem("bp_custom_sheet_id", userSheetId);
-        
-        currentApiUrl = userInstanceUrl;
-        isConnected = true;
-        
-        closeTenantModal();
-        showToast("✅ Connected! Loading your personal sheet data...");
-        fetchData();
-      }, 1000);
-    }
-
-    // Manual Connection Trigger
-    function saveManualInstance() {
-      const input = document.getElementById("customApiInput").value.trim();
-      if (!input) {
-        alert("Please enter a valid Google Sheet ID or Web App URL.");
+      if (!extractedId || extractedId.length < 15) {
+        alert("Please paste a valid Google Sheet URL or Sheet ID from your Google Drive.");
         return;
       }
 
-      let targetUrl = input.includes("/exec") ? input : MASTER_API_URL;
-      
-      localStorage.setItem("bp_custom_api_url", targetUrl);
-      localStorage.setItem("bp_custom_sheet_id", input);
-      currentApiUrl = targetUrl;
-      isConnected = true;
-
-      closeTenantModal();
-      showToast("✅ Private sheet successfully connected!");
-      fetchData();
+      localStorage.setItem("connectedSheetId", extractedId);
+      document.getElementById("onboardingModal").classList.add("hidden");
+      document.getElementById("instanceStatusText").innerText = `Connected Sheet ID: ${extractedId.substring(0, 8)}...`;
+      showToast("Private Google Sheet linked successfully!");
+      fetchData(extractedId);
     }
 
+    // Instance Config Switcher Handlers
+    function openInstanceConfigModal() {
+      const current = localStorage.getItem("connectedSheetId") || MASTER_SHEET_ID;
+      document.getElementById("configSheetInput").value = current;
+      document.getElementById("instanceConfigModal").classList.remove("hidden");
+    }
+
+    function closeInstanceConfigModal() {
+      document.getElementById("instanceConfigModal").classList.add("hidden");
+    }
+
+    function updateInstanceSheet() {
+      const input = document.getElementById("configSheetInput").value.trim();
+      const extractedId = extractSheetId(input);
+      if (extractedId) {
+        localStorage.setItem("connectedSheetId", extractedId);
+        document.getElementById("instanceStatusText").innerText = `Connected Sheet ID: ${extractedId.substring(0, 8)}...`;
+        closeInstanceConfigModal();
+        showToast("Connected instance updated.");
+        fetchData(extractedId);
+      }
+    }
+
+    // Theme Switcher
     function toggleTheme() {
       if (document.documentElement.classList.contains('dark')) {
         document.documentElement.classList.remove('dark');
@@ -474,17 +486,25 @@
       }
     }
 
-    async function fetchData() {
+    // Fetch JSON from Connected Instance
+    async function fetchData(sheetId) {
       try {
-        showToast("Fetching live Google Sheet records...");
-        const res = await fetch(currentApiUrl);
+        showToast("Synchronizing with private instance...");
+        const targetUrl = sheetId ? `${API_URL}?sheetId=${encodeURIComponent(sheetId)}` : API_URL;
+        const res = await fetch(targetUrl);
         systemData = await res.json();
+
+        if (systemData.error) {
+          showToast(systemData.error);
+          return;
+        }
+
         renderTabNavigation();
         switchTab(activeTabName);
-        showToast("Connected to your private sheet.");
+        showToast("Workspace records loaded.");
       } catch (err) {
         console.error("Fetch error:", err);
-        showToast("Error connecting to Google Sheets.");
+        showToast("Error loading sheet records.");
       }
     }
 
@@ -521,7 +541,7 @@
       const sheet = systemData.sheets[tabName];
       const isLocked = tabName.startsWith("🔒");
       const isPro = tabName.includes("03_") || tabName.includes("04_");
-
+      
       document.getElementById("currentTabTitle").innerText = tabName.replace("🔒 ", "");
       const banner = document.getElementById("tierBanner");
       const unlockedControls = document.getElementById("unlockedControls");
@@ -582,7 +602,7 @@
           const cellStr = String(cellVal);
 
           if (cellStr.includes("🔒") || cellStr.includes("••••")) {
-            td.innerHTML = `<span onclick="openModal('${activeTabName.includes("03_") || activeTabName.includes("04_") ? 'pro' : 'enterprise'}')" class="cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-[11px] font-mono tracking-wider hover:bg-amber-100 hover:text-amber-800 transition">$ •••••• 🔒</span>`;
+            td.innerHTML = `<span onclick="openModal('${tabNameIsPro(activeTabName) ? 'pro' : 'enterprise'}')" class="cursor-pointer bg-slate-200 dark:bg-slate-700 text-slate-500 px-2 py-0.5 rounded text-[11px] font-mono tracking-wider hover:bg-amber-100 hover:text-amber-800 transition">$ •••••• 🔒</span>`;
           } else if (!isLocked && (cIdx >= 0 && cIdx <= 8)) {
             td.contentEditable = "true";
             td.innerText = formatDisplayValue(cellVal, cIdx);
@@ -609,12 +629,11 @@
       });
     }
 
-    // Fixed Clean Value Display & CSI Code Date Parsing Fix
+    function tabNameIsPro(name) {
+      return name.includes("03_") || name.includes("04_");
+    }
+
     function formatDisplayValue(val, colIdx) {
-      if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
-        // If Google Sheet mistakenly converted CSI Code into Date string, parse clean standard code
-        return "03-30-00";
-      }
       if (typeof val === 'number') {
         if (colIdx >= 6) return '$' + Number(val).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         return Number(val).toLocaleString();
@@ -711,16 +730,18 @@
         return;
       }
 
-      showToast(`Syncing ${total} change(s) with your private Google Sheet...`);
+      const targetSheetId = localStorage.getItem("connectedSheetId") || MASTER_SHEET_ID;
+      showToast(`Syncing ${total} change(s) with private instance...`);
       const syncBtn = document.getElementById("syncBtn");
       syncBtn.disabled = true;
 
       try {
         if (pendingChanges.batchUpdates.length > 0) {
-          await fetch(currentApiUrl, {
+          await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify({
               action: "batchUpdate",
+              targetSheetId: targetSheetId,
               tabName: activeTabName,
               updates: pendingChanges.batchUpdates
             })
@@ -728,10 +749,11 @@
         }
 
         for (const item of pendingChanges.addedRows) {
-          await fetch(currentApiUrl, {
+          await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify({
               action: "addRow",
+              targetSheetId: targetSheetId,
               tabName: item.tab,
               rowData: item.rowData
             })
@@ -739,10 +761,11 @@
         }
 
         for (const item of pendingChanges.deletedRows) {
-          await fetch(currentApiUrl, {
+          await fetch(API_URL, {
             method: "POST",
             body: JSON.stringify({
               action: "deleteRow",
+              targetSheetId: targetSheetId,
               tabName: item.tab,
               rowIndex: item.rowIndex
             })
@@ -751,11 +774,11 @@
 
         pendingChanges = { batchUpdates: [], addedRows: [], deletedRows: [] };
         updatePendingBadge();
-        showToast("⚡ All changes committed to your private sheet!");
-        fetchData();
+        showToast("⚡ Changes synced to your private Google Sheet!");
+        fetchData(targetSheetId);
       } catch (err) {
         console.error("Sync error:", err);
-        showToast("Failed to write to Google Sheets. Check access permissions.");
+        showToast("Failed to write to private sheet. Check permissions.");
       } finally {
         syncBtn.disabled = false;
       }
@@ -807,7 +830,7 @@
     function handleCheckout(tier) {
       const url = tier === 'pro' ? PRO_CHECKOUT_URL : ENTERPRISE_CHECKOUT_URL;
       if (url === '#' || !url) {
-        showToast("Checkout link configured as demo safe fallback (#).");
+        showToast(`Checkout link configured as demo safe fallback (#).`);
       } else {
         window.open(url, '_blank');
       }
